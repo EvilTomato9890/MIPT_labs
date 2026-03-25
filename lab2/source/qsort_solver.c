@@ -5,8 +5,8 @@
 #include "return_macros.h"
 
 #define SORTED_OUTPUT_BUFFER_EXTRA_CHARS 32U
-#define SORTED_CHARS_PER_NUMBER 13U
-#define MIN_ALLOCATED_LENGTH 1U
+#define SORTED_CHARS_PER_NUMBER          13U
+#define MIN_ALLOCATED_LENGTH             1U
 
 static int cmp_int(const void *lhs, const void *rhs) {
     int a = *(const int *)lhs;
@@ -16,7 +16,7 @@ static int cmp_int(const void *lhs, const void *rhs) {
 
 static void write_sorted_array(const int *arr, size_t n) {
     size_t buffer_size = SORTED_OUTPUT_BUFFER_EXTRA_CHARS + n * SORTED_CHARS_PER_NUMBER;
-    char *buffer = (char *)calloc(buffer_size, sizeof(char));
+    char  *buffer      = (char *)calloc(buffer_size, sizeof(char));
     RETURN_IF_FAIL(buffer != NULL, "qsort_solver: no memory for output buffer");
 
     int written = snprintf(buffer, buffer_size, "%zu\n", n);

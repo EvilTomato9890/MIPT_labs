@@ -9,11 +9,11 @@
 #include "logger.h"
 #include "return_macros.h"
 
-#define MIN_ALLOCATED_LENGTH 1U
+#define MIN_ALLOCATED_LENGTH     1U
 #define DATASET_PATH_BUFFER_SIZE 512U
-#define CSV_LINE_FORMAT "%s,%zu,%.9f\n"
-#define PROGRESS_BAR_WIDTH 28U
-#define PERCENT_SCALE 100U
+#define CSV_LINE_FORMAT          "%s,%zu,%.9f\n"
+#define PROGRESS_BAR_WIDTH       28U
+#define PERCENT_SCALE            100U
 
 static int *read_array_file(const char *path, size_t *n) {
     HARD_ASSERT(path != NULL && n != NULL, "read_array_file: invalid args");
@@ -90,8 +90,8 @@ void run_sorting_group(const dataset_config *cfg, const named_sorting *sorters, 
 
     size_t size_count = (cfg->to >= cfg->from) ? ((cfg->to - cfg->from) / cfg->step + 1U) : 0U;
     size_t total_runs = size_count * cfg->copies * count;
-    size_t completed = 0U;
-    double *sums = (double *)calloc(size_count * count, sizeof(sums[0]));
+    size_t completed  = 0U;
+    double *sums      = (double *)calloc(size_count * count, sizeof(sums[0]));
     RETURN_IF_FAIL(sums != NULL || size_count == 0U || count == 0U, "run_sorting_group: no memory");
 
     FILE *csv = fopen(cfg->result_csv, "a");
@@ -105,7 +105,7 @@ void run_sorting_group(const dataset_config *cfg, const named_sorting *sorters, 
         for (size_t copy_idx = 0U; copy_idx < cfg->copies; ++copy_idx) {
             char in_path[DATASET_PATH_BUFFER_SIZE] = "";
             char out_path[DATASET_PATH_BUFFER_SIZE] = "";
-            snprintf(in_path, sizeof(in_path), "%s/%zu_%zu.in", cfg->tests_dir, size, copy_idx);
+            snprintf(in_path, sizeof(in_path),   "%s/%zu_%zu.in",  cfg->tests_dir, size, copy_idx);
             snprintf(out_path, sizeof(out_path), "%s/%zu_%zu.out", cfg->tests_dir, size, copy_idx);
 
             size_t n = 0U;

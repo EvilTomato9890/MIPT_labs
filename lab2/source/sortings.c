@@ -10,24 +10,28 @@
 #include "logger.h"
 #include "return_macros.h"
 
-#define SHELL_KNUTH_BASE_GAP 1U
-#define SHELL_KNUTH_FACTOR 3U
+#define SHELL_KNUTH_BASE_GAP  1U
+#define SHELL_KNUTH_FACTOR    3U
 #define SHELL_KNUTH_INCREMENT 1U
+
 #define MIN_HEAP_BRANCHING_FACTOR 2U
-#define KARY_FIRST_CHILD_OFFSET 1U
-#define RADIX_BUCKETS 256U
+#define KARY_FIRST_CHILD_OFFSET   1U
+
+#define RADIX_BUCKETS     256U
 #define RADIX_COUNT_SIZE (RADIX_BUCKETS + 1U)
-#define SIGN_BIT_MASK 0x80000000U
-#define BYTE_MASK 0xFFU
-#define BITS_PER_BYTE 8U
+#define SIGN_BIT_MASK     0x80000000U
+#define BYTE_MASK         0xFFU
+#define BITS_PER_BYTE     8U
+
 #define TIMSORT_MINRUN_THRESHOLD 64U
-#define TIMSORT_STACK_CAPACITY 128U
-#define PDQSORT_INSERTION_THRESHOLD 24U
-#define PDQSORT_FALLBACK_HEAP_K 4U
-#define PDQSORT_BAD_PARTITION_NUMERATOR 8U
+#define TIMSORT_STACK_CAPACITY   128U
+
+#define PDQSORT_INSERTION_THRESHOLD       24U
+#define PDQSORT_FALLBACK_HEAP_K           4U
+#define PDQSORT_BAD_PARTITION_NUMERATOR   8U
 #define PDQSORT_BAD_PARTITION_DENOMINATOR 7U
-#define PDQSORT_DEPTH_COEF 2.0
-#define PDQSORT_EXTRA_BAD_PARTITIONS 4U
+#define PDQSORT_DEPTH_COEF                2.0
+#define PDQSORT_EXTRA_BAD_PARTITIONS      4U
 
 typedef struct range_type {
     ptrdiff_t left;
@@ -111,8 +115,8 @@ void shell_knuth_sort(int *arr, size_t n) {
 
 static size_t max_child_kary(const int *arr, size_t n, size_t k, size_t root) {
     size_t first = root * k + KARY_FIRST_CHILD_OFFSET;
-    size_t best = first;
-    size_t last = first + k;
+    size_t best  = first;
+    size_t last  = first + k;
     if (last > n) {
         last = n;
     }
@@ -171,15 +175,9 @@ static void merge_two(const int *src, int *dst, size_t left, size_t mid, size_t 
     size_t i = left;
     size_t j = mid;
     size_t p = left;
-    while (i < mid && j < right) {
-        dst[p++] = (src[i] <= src[j]) ? src[i++] : src[j++];
-    }
-    while (i < mid) {
-        dst[p++] = src[i++];
-    }
-    while (j < right) {
-        dst[p++] = src[j++];
-    }
+    while (i < mid && j < right) dst[p++] = (src[i] <= src[j]) ? src[i++] : src[j++];
+    while (i < mid)              dst[p++] = src[i++];
+    while (j < right)            dst[p++] = src[j++];
 }
 
 static void merge_recursive_impl(int *arr, int *buf, size_t left, size_t right) {
@@ -211,14 +209,12 @@ void merge_iterative_sort(int *arr, size_t n) {
     int *dst = buf;
     for (size_t width = 1U; width < n; width <<= 1U) {
         for (size_t left = 0U; left < n; left += (width << 1U)) {
-            size_t mid = left + width;
+
+            size_t mid   = left + width;
             size_t right = left + (width << 1U);
-            if (mid > n) {
-                mid = n;
-            }
-            if (right > n) {
-                right = n;
-            }
+            if (mid > n)   mid = n;
+            if (right > n) right = n;
+            
             merge_two(src, dst, left, mid, right);
         }
         int *tmp = src;
@@ -234,9 +230,7 @@ void merge_iterative_sort(int *arr, size_t n) {
 
 static ptrdiff_t pick_pivot(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
     ptrdiff_t c = l + (r - l) / 2;
-    if (s == PIVOT_CENTER) {
-        return c;
-    }
+    if (s == PIVOT_CENTER) return c;
     if (s == PIVOT_RANDOM) {
         return l + (ptrdiff_t)(rand() % (int)(r - l + 1));
     }
@@ -285,12 +279,12 @@ static ptrdiff_t partition_hoare(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strat
         do {
             ++i;
         } while (arr[i] < pivot);
+
         do {
             --j;
         } while (arr[j] > pivot);
-        if (i >= j) {
-            return j;
-        }
+
+        if (i >= j) return j;
         swap_int(&arr[i], &arr[j]);
     }
 }
@@ -298,7 +292,7 @@ static ptrdiff_t partition_hoare(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strat
 static range_type partition_three_way(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
     int pivot = arr[pick_pivot(arr, l, r, s)];
     ptrdiff_t lt = l;
-    ptrdiff_t i = l;
+    ptrdiff_t i  = l;
     ptrdiff_t gt = r;
     while (i <= gt) {
         if (arr[i] < pivot) {
@@ -381,9 +375,7 @@ void quick_best_sort(int *arr, size_t n, pivot_strategy_type strategy) {
 }
 
 static size_t depth_limit(size_t n, double coef) {
-    if (n < 2U) {
-        return 0U;
-    }
+    if (n < 2U) return 0U;
     double v = coef * log2((double)n);
     return (size_t)((v < 1.0) ? 1.0 : v);
 }
@@ -517,9 +509,7 @@ static void reverse_part(int *arr, size_t left, size_t right) {
 }
 
 static size_t find_run(int *arr, size_t n, size_t start) {
-    if (start + 1U >= n) {
-        return n;
-    }
+    if (start + 1U >= n) return n;
 
     size_t i = start + 1U;
     if (arr[i] < arr[i - 1U]) {
@@ -586,7 +576,7 @@ void timsort_sort(int *arr, size_t n) {
         pos = run_end;
 
         while (top > 1U) {
-            size_t x = top - 1U;
+            size_t x     = top - 1U;
             size_t len_x = stack[x].right - stack[x].left;
             size_t len_y = stack[x - 1U].right - stack[x - 1U].left;
             if (len_y > len_x) {
@@ -620,9 +610,9 @@ static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
         }
 
         range_type p = partition_three_way(arr, l, r, PIVOT_MEDIAN3_RANDOM);
-        size_t left_len = (size_t)((p.left > l) ? (p.left - l) : 0);
+        size_t left_len  = (size_t)((p.left > l) ? (p.left - l) : 0);
         size_t right_len = (size_t)((r > p.right) ? (r - p.right) : 0);
-        size_t bigger = (left_len > right_len) ? left_len : right_len;
+        size_t bigger    = (left_len > right_len) ? left_len : right_len;
         if (bigger * PDQSORT_BAD_PARTITION_NUMERATOR > len * PDQSORT_BAD_PARTITION_DENOMINATOR) {
             --bad;
         }

@@ -24,14 +24,14 @@
                               PIVOT_MEDIAN3, shell_knuth_sort);                                \
     }
 
-static const size_t BEST_HEAP_K = 4U;
+static const size_t BEST_HEAP_K              = 4U;
 static const size_t BEST_INTROSORT_THRESHOLD = 32U;
-static const double BEST_INTROSORT_C = 2.0;
-static const double INTROSORT_DEPTH_C_125 = 1.25;
-static const double INTROSORT_DEPTH_C_150 = 1.50;
-static const double INTROSORT_DEPTH_C_200 = 2.00;
-static const double INTROSORT_DEPTH_C_250 = 2.50;
-static const double INTROSORT_DEPTH_C_300 = 3.00;
+static const double BEST_INTROSORT_C         = 2.0;
+static const double INTROSORT_DEPTH_C_125    = 1.25;
+static const double INTROSORT_DEPTH_C_150    = 1.50;
+static const double INTROSORT_DEPTH_C_200    = 2.00;
+static const double INTROSORT_DEPTH_C_250    = 2.50;
+static const double INTROSORT_DEPTH_C_300    = 3.00;
 
 static int compare_int(const void *lhs, const void *rhs) {
     int a = *(const int *)lhs;
@@ -39,11 +39,11 @@ static int compare_int(const void *lhs, const void *rhs) {
     return (a > b) - (a < b);
 }
 
-static void qsort_stdlib_sort(int *arr, size_t n) { qsort(arr, n, sizeof(arr[0]), compare_int); }
-static void quick_pivot_center(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_CENTER); }
+static void qsort_stdlib_sort  (int *arr, size_t n) { qsort(arr, n, sizeof(arr[0]), compare_int); }
+static void quick_pivot_center (int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_CENTER); }
 static void quick_pivot_median3(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3); }
-static void quick_pivot_random(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_RANDOM); }
-static void quick_pivot_m3rand(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3_RANDOM); }
+static void quick_pivot_random (int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_RANDOM); }
+static void quick_pivot_m3rand (int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3_RANDOM); }
 DEFINE_HEAP_WRAPPER(heap_k2, 2U)
 DEFINE_HEAP_WRAPPER(heap_k3, 3U)
 DEFINE_HEAP_WRAPPER(heap_k4, 4U)
@@ -205,17 +205,17 @@ int main(int argc, char **argv) {
     fprintf(out, RESULT_CSV_HEADER);
     fclose(out);
 
-    if (strcmp(argv[1], "p1") == 0) { run_point_1(&cfg); return 0; }
-    if (strcmp(argv[1], "p2") == 0) { run_point_2(&cfg); return 0; }
-    if (strcmp(argv[1], "p3") == 0) { run_point_3(&cfg); return 0; }
-    if (strcmp(argv[1], "p4") == 0) { run_point_4(&cfg); return 0; }
-    if (strcmp(argv[1], "p5") == 0) { run_point_5(&cfg); return 0; }
-    if (strcmp(argv[1], "p6") == 0) { run_point_6(&cfg); return 0; }
-    if (strcmp(argv[1], "p7") == 0) { run_point_7(&cfg); return 0; }
+    if (strcmp(argv[1], "p1") == 0)     { run_point_1(&cfg);      return 0; }
+    if (strcmp(argv[1], "p2") == 0)     { run_point_2(&cfg);      return 0; }
+    if (strcmp(argv[1], "p3") == 0)     { run_point_3(&cfg);      return 0; }
+    if (strcmp(argv[1], "p4") == 0)     { run_point_4(&cfg);      return 0; }
+    if (strcmp(argv[1], "p5") == 0)     { run_point_5(&cfg);      return 0; }
+    if (strcmp(argv[1], "p6") == 0)     { run_point_6(&cfg);      return 0; }
+    if (strcmp(argv[1], "p7") == 0)     { run_point_7(&cfg);      return 0; }
     if (strcmp(argv[1], "p7scan") == 0) { run_point_7_scan(&cfg); return 0; }
-    if (strcmp(argv[1], "p8") == 0) { run_point_8(&cfg); return 0; }
-    if (strcmp(argv[1], "p9") == 0) { run_point_9(&cfg); return 0; }
-    if (strcmp(argv[1], "p10") == 0) { run_point_10(&cfg); return 0; }
+    if (strcmp(argv[1], "p8") == 0)     { run_point_8(&cfg);      return 0; }
+    if (strcmp(argv[1], "p9") == 0)     { run_point_9(&cfg);      return 0; }
+    if (strcmp(argv[1], "p10") == 0)    { run_point_10(&cfg);     return 0; }
 
     LOGGER_ERROR("unknown point '%s'", argv[1]);
     return 2;
