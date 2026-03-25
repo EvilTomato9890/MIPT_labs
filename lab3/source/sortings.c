@@ -8,6 +8,7 @@
 
 #include "asserts.h"
 #include "logger.h"
+#include "return_macros.h"
 
 typedef struct range_type {
     ptrdiff_t left;
@@ -151,9 +152,7 @@ static void merge_recursive_impl(int *arr, int *buf, size_t left, size_t right) 
 void merge_recursive_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "merge_recursive_sort: invalid args");
     int *buf = (int *)calloc(n, sizeof(int));
-    SOFT_ASSERT_FUNCTIONAL(buf != NULL || n == 0U,
-                           "merge_recursive_sort: no memory",
-                           return);
+    RETURN_IF_FAIL(buf != NULL || n == 0U, "merge_recursive_sort: no memory");
     merge_recursive_impl(arr, buf, 0U, n);
     free(buf);
 }
@@ -161,9 +160,7 @@ void merge_recursive_sort(int *arr, size_t n) {
 void merge_iterative_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "merge_iterative_sort: invalid args");
     int *buf = (int *)calloc(n, sizeof(int));
-    SOFT_ASSERT_FUNCTIONAL(buf != NULL || n == 0U,
-                           "merge_iterative_sort: no memory",
-                           return);
+    RETURN_IF_FAIL(buf != NULL || n == 0U, "merge_iterative_sort: no memory");
 
     int *src = arr;
     int *dst = buf;
@@ -378,9 +375,7 @@ void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth
 void lsd_radix_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "lsd_radix_sort: invalid args");
     int *buf = (int *)calloc(n, sizeof(int));
-    SOFT_ASSERT_FUNCTIONAL(buf != NULL || n == 0U,
-                           "lsd_radix_sort: no memory",
-                           return);
+    RETURN_IF_FAIL(buf != NULL || n == 0U, "lsd_radix_sort: no memory");
 
     for (size_t byte = 0U; byte < sizeof(int); ++byte) {
         size_t count[256] = {0};
@@ -441,9 +436,7 @@ static void msd_byte_sort(int *arr, int *buf, size_t n, size_t byte) {
 void msd_radix_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "msd_radix_sort: invalid args");
     int *buf = (int *)calloc(n, sizeof(int));
-    SOFT_ASSERT_FUNCTIONAL(buf != NULL || n == 0U,
-                           "msd_radix_sort: no memory",
-                           return);
+    RETURN_IF_FAIL(buf != NULL || n == 0U, "msd_radix_sort: no memory");
     msd_byte_sort(arr, buf, n, 0U);
     free(buf);
 }
@@ -518,9 +511,7 @@ void timsort_sort(int *arr, size_t n) {
     }
 
     int *buf = (int *)calloc(n, sizeof(int));
-    SOFT_ASSERT_FUNCTIONAL(buf != NULL,
-                           "timsort_sort: no memory",
-                           return);
+    RETURN_IF_FAIL(buf != NULL, "timsort_sort: no memory");
 
     size_t minrun = min_run_value(n);
     run_type stack[128] = {{0U, 0U}};
@@ -549,7 +540,6 @@ void timsort_sort(int *arr, size_t n) {
                 break;
             }
             merge_at(arr, buf, stack, x - 1U);
-            stack[x - 1U] = stack[x - 1U];
             for (size_t k = x; k + 1U < top; ++k) {
                 stack[k] = stack[k + 1U];
             }
