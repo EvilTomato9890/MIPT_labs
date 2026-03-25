@@ -31,4 +31,8 @@ void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth
 void lsd_radix_sort(int *arr, size_t n);
 void msd_radix_sort(int *arr, size_t n);
 
+void timsort_sort(int *arr, size_t n);
+void pdqsort_sort(int *arr, size_t n);
+
+
 #endif

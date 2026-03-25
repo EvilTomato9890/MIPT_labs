@@ -12,14 +12,18 @@ typedef struct named_sorting {
     sorting_fn fn;
 } named_sorting;
 
-static void quick_center_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_CENTER); }
-static void quick_median3_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3); }
-static void quick_random_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_RANDOM); }
-static void quick_median3_random_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3_RANDOM); }
+static int compare_int(const void *lhs, const void *rhs) {
+    int a = *(const int *)lhs;
+    int b = *(const int *)rhs;
+    return (a > b) - (a < b);
+}
 
-static void introsort_t16_d2_k2(int *arr, size_t n) { introsort(arr, n, 16U, 2U, 2.0); }
+static void qsort_stdlib_sort(int *arr, size_t n) {
+    qsort(arr, n, sizeof(arr[0]), compare_int);
+}
+
+static void quick_median3_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3); }
 static void introsort_t32_d2_k4(int *arr, size_t n) { introsort(arr, n, 32U, 4U, 2.0); }
-static void introsort_t64_d3_k8(int *arr, size_t n) { introsort(arr, n, 64U, 8U, 3.0); }
 
 static void run_group(const dataset_config *cfg, const named_sorting *arr, size_t count) {
     for (size_t i = 0U; i < count; ++i) {
@@ -29,32 +33,32 @@ static void run_group(const dataset_config *cfg, const named_sorting *arr, size_
     }
 }
 
-static void run_point_5(const dataset_config *cfg) {
-    named_sorting list[] = {
-        {"quick_3way_pivot_center", quick_center_pivot},
-        {"quick_3way_pivot_median3", quick_median3_pivot},
-        {"quick_3way_pivot_random", quick_random_pivot},
-        {"quick_3way_pivot_median3_random", quick_median3_random_pivot}
-    };
-    run_group(cfg, list, sizeof(list) / sizeof(list[0]));
-}
-
-static void run_point_6(const dataset_config *cfg) {
+static void run_point_8(const dataset_config *cfg) {
     named_sorting list[] = {
         {"quick_3way_pivot_median3_baseline", quick_median3_pivot},
-        {"introsort_threshold16_depth2_heap2", introsort_t16_d2_k2},
         {"introsort_threshold32_depth2_heap4", introsort_t32_d2_k4},
-        {"introsort_threshold64_depth3_heap8", introsort_t64_d3_k8}
+        {"timsort_hybrid_runs", timsort_sort},
+        {"pdqsort_pattern_defeating", pdqsort_sort}
     };
     run_group(cfg, list, sizeof(list) / sizeof(list[0]));
 }
 
-static void run_point_7(const dataset_config *cfg) {
+static void run_point_9(const dataset_config *cfg) {
     named_sorting list[] = {
-        {"quick_3way_pivot_median3_baseline", quick_median3_pivot},
-        {"merge_iterative_baseline", merge_iterative_sort},
         {"radix_lsd_bytewise", lsd_radix_sort},
         {"radix_msd_bytewise", msd_radix_sort}
+    };
+    run_group(cfg, list, sizeof(list) / sizeof(list[0]));
+}
+
+static void run_point_10(const dataset_config *cfg) {
+    named_sorting list[] = {
+        {"quick_3way_pivot_median3_best", quick_median3_pivot},
+        {"introsort_threshold32_depth2_heap4", introsort_t32_d2_k4},
+        {"pdqsort_pattern_defeating", pdqsort_sort},
+        {"radix_lsd_bytewise", lsd_radix_sort},
+        {"timsort_hybrid_runs", timsort_sort},
+        {"qsort_stdlib_reference", qsort_stdlib_sort}
     };
     run_group(cfg, list, sizeof(list) / sizeof(list[0]));
 }
@@ -79,16 +83,16 @@ int main(int argc, char **argv) {
     fprintf(out, "algorithm,size,seconds\n");
     fclose(out);
 
-    if (strcmp(argv[1], "p5") == 0) {
-        run_point_5(&cfg);
+    if (strcmp(argv[1], "p8") == 0) {
+        run_point_8(&cfg);
         return 0;
     }
-    if (strcmp(argv[1], "p6") == 0) {
-        run_point_6(&cfg);
+    if (strcmp(argv[1], "p9") == 0) {
+        run_point_9(&cfg);
         return 0;
     }
-    if (strcmp(argv[1], "p7") == 0) {
-        run_point_7(&cfg);
+    if (strcmp(argv[1], "p10") == 0) {
+        run_point_10(&cfg);
         return 0;
     }
 

@@ -447,3 +447,157 @@ void msd_radix_sort(int *arr, size_t n) {
     msd_byte_sort(arr, buf, n, 0U);
     free(buf);
 }
+
+typedef struct run_type {
+    size_t left;
+    size_t right;
+} run_type;
+
+static size_t min_run_value(size_t n) {
+    size_t r = 0U;
+    while (n >= 64U) {
+        r |= n & 1U;
+        n >>= 1U;
+    }
+    return n + r;
+}
+
+static void reverse_part(int *arr, size_t left, size_t right) {
+    while (left < right) {
+        swap_int(&arr[left], &arr[right]);
+        ++left;
+        --right;
+    }
+}
+
+static size_t find_run(int *arr, size_t n, size_t start) {
+    if (start + 1U >= n) {
+        return n;
+    }
+
+    size_t i = start + 1U;
+    if (arr[i] < arr[i - 1U]) {
+        while (i < n && arr[i] < arr[i - 1U]) {
+            ++i;
+        }
+        reverse_part(arr, start, i - 1U);
+    } else {
+        while (i < n && arr[i] >= arr[i - 1U]) {
+            ++i;
+        }
+    }
+    return i;
+}
+
+static void merge_inplace_buffer(int *arr, int *buf, size_t l, size_t m, size_t r) {
+    size_t len = m - l;
+    memcpy(buf, arr + l, len * sizeof(arr[0]));
+    size_t i = 0U;
+    size_t j = m;
+    size_t p = l;
+    while (i < len && j < r) {
+        arr[p++] = (buf[i] <= arr[j]) ? buf[i++] : arr[j++];
+    }
+    while (i < len) {
+        arr[p++] = buf[i++];
+    }
+}
+
+static void merge_at(int *arr, int *buf, run_type *stack, size_t idx) {
+    size_t l = stack[idx].left;
+    size_t m = stack[idx].right;
+    size_t r = stack[idx + 1U].right;
+    merge_inplace_buffer(arr, buf, l, m, r);
+    stack[idx].right = r;
+}
+
+void timsort_sort(int *arr, size_t n) {
+    HARD_ASSERT(arr != NULL || n == 0U, "timsort_sort: invalid args");
+    if (n < 2U) {
+        return;
+    }
+
+    int *buf = (int *)calloc(n, sizeof(int));
+    SOFT_ASSERT_FUNCTIONAL(buf != NULL,
+                           "timsort_sort: no memory",
+                           return);
+
+    size_t minrun = min_run_value(n);
+    run_type stack[128] = {{0U, 0U}};
+    size_t top = 0U;
+    size_t pos = 0U;
+
+    while (pos < n) {
+        size_t run_end = find_run(arr, n, pos);
+        size_t need = pos + minrun;
+        if (run_end < need) {
+            if (need > n) {
+                need = n;
+            }
+            insertion_sort(arr + pos, need - pos);
+            run_end = need;
+        }
+
+        stack[top++] = (run_type){pos, run_end};
+        pos = run_end;
+
+        while (top > 1U) {
+            size_t x = top - 1U;
+            size_t len_x = stack[x].right - stack[x].left;
+            size_t len_y = stack[x - 1U].right - stack[x - 1U].left;
+            if (len_y > len_x) {
+                break;
+            }
+            merge_at(arr, buf, stack, x - 1U);
+            stack[x - 1U] = stack[x - 1U];
+            for (size_t k = x; k + 1U < top; ++k) {
+                stack[k] = stack[k + 1U];
+            }
+            --top;
+        }
+    }
+
+    while (top > 1U) {
+        merge_at(arr, buf, stack, top - 2U);
+        --top;
+    }
+    free(buf);
+}
+
+static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
+    while (l < r) {
+        size_t len = (size_t)(r - l + 1);
+        if (len < 24U) {
+            insertion_sort(arr + l, len);
+            return;
+        }
+        if (bad == 0U) {
+            heap_kary_sort(arr + l, len, 4U);
+            return;
+        }
+
+        range_type p = partition_three_way(arr, l, r, PIVOT_MEDIAN3_RANDOM);
+        size_t left_len = (size_t)((p.left > l) ? (p.left - l) : 0);
+        size_t right_len = (size_t)((r > p.right) ? (r - p.right) : 0);
+        size_t bigger = (left_len > right_len) ? left_len : right_len;
+        if (bigger * 8U > len * 7U) {
+            --bad;
+        }
+
+        if (left_len < right_len) {
+            pdqsort_impl(arr, l, p.left - 1, bad);
+            l = p.right + 1;
+        } else {
+            pdqsort_impl(arr, p.right + 1, r, bad);
+            r = p.left - 1;
+        }
+    }
+}
+
+void pdqsort_sort(int *arr, size_t n) {
+    HARD_ASSERT(arr != NULL || n == 0U, "pdqsort_sort: invalid args");
+    if (n > 1U) {
+        size_t bad = depth_limit(n, 2.0);
+        pdqsort_impl(arr, 0, (ptrdiff_t)n - 1, bad + 4U);
+    }
+}

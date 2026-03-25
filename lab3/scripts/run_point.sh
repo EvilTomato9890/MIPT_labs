@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 5 ]]; then
-  echo "usage: run_point.sh <point:p5|p6|p7> <tests_dir> <csv_out> <limit> <seed>"
+  echo "usage: run_point.sh <point:p8|p9|p10> <tests_dir> <csv_out> <limit> <seed>"
   exit 1
 fi
 
@@ -13,14 +13,14 @@ limit="$4"
 seed="$5"
 
 case "$point" in
-  p5)
-    from=0; to=10000000; step=100000; copies=100
+  p8)
+    from=0; to=1000000; step=10000; copies=5
     ;;
-  p6)
-    from=0; to=10000000; step=100000; copies=100
+  p9)
+    from=0; to=1000000; step=10000; copies=5
     ;;
-  p7)
-    from=0; to=10000000; step=100000; copies=100
+  p10)
+    from=0; to=1000000; step=10000; copies=5
     ;;
   *)
     echo "unknown point: $point"

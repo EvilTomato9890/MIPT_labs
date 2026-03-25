@@ -22,7 +22,7 @@ check: all
 	mkdir -p /tmp/lab3_tests
 	cp /tmp/lab3_demo.in /tmp/lab3_tests/20_0.in
 	cp /tmp/lab3_demo.out /tmp/lab3_tests/20_0.out
-	./bin/tester p5 /tmp/lab3_tests /tmp/lab3.csv 20 20 1 1
+	./bin/tester p8 /tmp/lab3_tests /tmp/lab3.csv 20 20 1 1
 
 clean:
 	rm -rf bin
