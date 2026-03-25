@@ -50,6 +50,6 @@
 #endif
 
 #define SOFT_ASSERT(test, message) SOFT_ASSERT_FUNCTIONAL((test), (message), (void)0)
-#define SOFT_ASSERT_FUCTIONAL(test, message, command) SOFT_ASSERT_FUNCTIONAL((test), (message), (command))
+#define SOFT_ASSERT_FUNCTIONAL(test, message, command) SOFT_ASSERT_FUNCTIONAL((test), (message), (command))
 
 #endif
