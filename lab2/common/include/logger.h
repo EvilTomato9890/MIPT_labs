@@ -1,5 +1,5 @@
-#ifndef LAB1_LOGGER_H_NCLUDED
-#define LAB1_LOGGER_H_NCLUDED
+#ifndef LAB2_LOGGER_H_INCLUDED
+#define LAB2_LOGGER_H_INCLUDED
 
 #include <stdio.h>
 
@@ -28,4 +28,4 @@ void logger_log_message(logger_mode_type mode, const char *file, int line, const
 
 #define LOGGER_ERROR(...) logger_log_message(LOGGER_MODE_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
-#endif /* LAB1_LOGGER_H_NCLUDED */
+#endif /* LAB2_LOGGER_H_INCLUDED */

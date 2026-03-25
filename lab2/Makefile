@@ -1,6 +1,6 @@
 CC := gcc
-CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic -D_POSIX_C_SOURCE=200809L -Iinclude -I../lab1/common/include
-COMMON_SRC := ../lab1/common/source/logger.c
+CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic -D_POSIX_C_SOURCE=200809L -Iinclude -Icommon/include
+COMMON_SRC := common/source/logger.c
 CHECK_DIR := .check_tmp
 BIN_DIR := bin
 EXE_EXT :=
