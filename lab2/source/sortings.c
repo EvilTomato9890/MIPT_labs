@@ -10,6 +10,25 @@
 #include "logger.h"
 #include "return_macros.h"
 
+#define SHELL_KNUTH_BASE_GAP 1U
+#define SHELL_KNUTH_FACTOR 3U
+#define SHELL_KNUTH_INCREMENT 1U
+#define MIN_HEAP_BRANCHING_FACTOR 2U
+#define KARY_FIRST_CHILD_OFFSET 1U
+#define RADIX_BUCKETS 256U
+#define RADIX_COUNT_SIZE (RADIX_BUCKETS + 1U)
+#define SIGN_BIT_MASK 0x80000000U
+#define BYTE_MASK 0xFFU
+#define BITS_PER_BYTE 8U
+#define TIMSORT_MINRUN_THRESHOLD 64U
+#define TIMSORT_STACK_CAPACITY 128U
+#define PDQSORT_INSERTION_THRESHOLD 24U
+#define PDQSORT_FALLBACK_HEAP_K 4U
+#define PDQSORT_BAD_PARTITION_NUMERATOR 8U
+#define PDQSORT_BAD_PARTITION_DENOMINATOR 7U
+#define PDQSORT_DEPTH_COEF 2.0
+#define PDQSORT_EXTRA_BAD_PARTITIONS 4U
+
 typedef struct range_type {
     ptrdiff_t left;
     ptrdiff_t right;
@@ -19,6 +38,10 @@ static void swap_int(int *a, int *b) {
     int tmp = *a;
     *a = *b;
     *b = tmp;
+}
+
+static size_t parent_kary(size_t idx, size_t k) {
+    return (idx - 1U) / k;
 }
 
 void insertion_sort(int *arr, size_t n) {
@@ -67,9 +90,9 @@ void selection_sort(int *arr, size_t n) {
 
 void shell_knuth_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "shell_knuth_sort: invalid args");
-    size_t gap = 1U;
-    while (gap < (n / 3U)) {
-        gap = gap * 3U + 1U;
+    size_t gap = SHELL_KNUTH_BASE_GAP;
+    while (gap < (n / SHELL_KNUTH_FACTOR)) {
+        gap = gap * SHELL_KNUTH_FACTOR + SHELL_KNUTH_INCREMENT;
     }
 
     while (gap > 0U) {
@@ -82,43 +105,65 @@ void shell_knuth_sort(int *arr, size_t n) {
             }
             arr[j] = key;
         }
-        gap = (gap - 1U) / 3U;
+        gap = (gap - SHELL_KNUTH_INCREMENT) / SHELL_KNUTH_FACTOR;
     }
 }
 
-static void sift_down_kary(int *arr, size_t n, size_t k, size_t root) {
-    while (1) {
-        size_t best = root;
-        size_t first = root * k + 1U;
-        for (size_t i = 0; i < k; ++i) {
-            size_t child = first + i;
-            if (child < n && arr[child] > arr[best]) {
-                best = child;
-            }
-        }
-        if (best == root) {
-            return;
-        }
-        swap_int(&arr[root], &arr[best]);
-        root = best;
+static size_t max_child_kary(const int *arr, size_t n, size_t k, size_t root) {
+    size_t first = root * k + KARY_FIRST_CHILD_OFFSET;
+    size_t best = first;
+    size_t last = first + k;
+    if (last > n) {
+        last = n;
     }
+    for (size_t child = first + 1U; child < last; ++child) {
+        if (arr[child] > arr[best]) {
+            best = child;
+        }
+    }
+    return best;
+}
+
+static void sift_down_kary_bottom_up(int *arr, size_t n, size_t k, size_t root) {
+    int key = arr[root];
+    size_t hole = root;
+
+    while (1) {
+        size_t first = hole * k + KARY_FIRST_CHILD_OFFSET;
+        if (first >= n) {
+            break;
+        }
+        size_t best = max_child_kary(arr, n, k, hole);
+        arr[hole] = arr[best];
+        hole = best;
+    }
+
+    while (hole > root) {
+        size_t parent = parent_kary(hole, k);
+        if (arr[parent] >= key) {
+            break;
+        }
+        arr[hole] = arr[parent];
+        hole = parent;
+    }
+    arr[hole] = key;
 }
 
 void heap_kary_sort(int *arr, size_t n, size_t k) {
     HARD_ASSERT(arr != NULL || n == 0U, "heap_kary_sort: invalid args");
-    HARD_ASSERT(k >= 2U, "heap_kary_sort: k must be >= 2");
+    HARD_ASSERT(k >= MIN_HEAP_BRANCHING_FACTOR, "heap_kary_sort: k must be >= 2");
     if (n < 2U) {
         return;
     }
 
     size_t last_parent = (n - 2U) / k;
     for (size_t i = last_parent + 1U; i > 0U; --i) {
-        sift_down_kary(arr, n, k, i - 1U);
+        sift_down_kary_bottom_up(arr, n, k, i - 1U);
     }
 
     for (size_t end = n; end > 1U; --end) {
         swap_int(&arr[0], &arr[end - 1U]);
-        sift_down_kary(arr, end - 1U, k, 0U);
+        sift_down_kary_bottom_up(arr, end - 1U, k, 0U);
     }
 }
 
@@ -344,31 +389,39 @@ static size_t depth_limit(size_t n, double coef) {
 }
 
 static void introsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r,
-                           size_t threshold, size_t heap_k, size_t depth) {
+                           size_t threshold, size_t heap_k, size_t depth,
+                           pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
     while (l < r) {
         size_t len = (size_t)(r - l + 1);
         if (len <= threshold) {
-            insertion_sort(arr + l, len);
+            small_sort(arr + l, len);
             return;
         }
         if (depth == 0U) {
             heap_kary_sort(arr + l, len, heap_k);
             return;
         }
-        range_type p = partition_three_way(arr, l, r, PIVOT_MEDIAN3);
+        range_type p = partition_three_way(arr, l, r, pivot_strategy);
         --depth;
-        introsort_impl(arr, l, p.left - 1, threshold, heap_k, depth);
+        introsort_impl(arr, l, p.left - 1, threshold, heap_k, depth, pivot_strategy, small_sort);
         l = p.right + 1;
     }
 }
 
 void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef) {
+    introsort_config_sort(arr, n, threshold, heap_k, depth_coef, PIVOT_MEDIAN3, insertion_sort);
+}
+
+void introsort_config_sort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef,
+                           pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
     HARD_ASSERT(arr != NULL || n == 0U, "introsort: invalid args");
     HARD_ASSERT(threshold >= 2U, "introsort: threshold must be >= 2");
     HARD_ASSERT(heap_k >= 2U, "introsort: heap_k must be >= 2");
+    HARD_ASSERT(small_sort != NULL, "introsort: small_sort must not be NULL");
     if (n > 1U) {
         introsort_impl(arr, 0, (ptrdiff_t)n - 1,
-                       threshold, heap_k, depth_limit(n, depth_coef));
+                       threshold, heap_k, depth_limit(n, depth_coef),
+                       pivot_strategy, small_sort);
     }
 }
 
@@ -378,21 +431,21 @@ void lsd_radix_sort(int *arr, size_t n) {
     RETURN_IF_FAIL(buf != NULL || n == 0U, "lsd_radix_sort: no memory");
 
     for (size_t byte = 0U; byte < sizeof(int); ++byte) {
-        size_t count[256] = {0};
+        size_t count[RADIX_BUCKETS] = {0};
         for (size_t i = 0U; i < n; ++i) {
-            uint32_t u = (uint32_t)arr[i] ^ 0x80000000U;
-            size_t b = (size_t)((u >> (byte * 8U)) & 0xFFU);
+            uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+            size_t b = (size_t)((u >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
             ++count[b];
         }
         size_t sum = 0U;
-        for (size_t i = 0U; i < 256U; ++i) {
+        for (size_t i = 0U; i < RADIX_BUCKETS; ++i) {
             size_t cur = count[i];
             count[i] = sum;
             sum += cur;
         }
         for (size_t i = 0U; i < n; ++i) {
-            uint32_t u = (uint32_t)arr[i] ^ 0x80000000U;
-            size_t b = (size_t)((u >> (byte * 8U)) & 0xFFU);
+            uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+            size_t b = (size_t)((u >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
             buf[count[b]++] = arr[i];
         }
         memcpy(arr, buf, n * sizeof(arr[0]));
@@ -405,26 +458,26 @@ static void msd_byte_sort(int *arr, int *buf, size_t n, size_t byte) {
         return;
     }
 
-    size_t count[257] = {0};
+    size_t count[RADIX_COUNT_SIZE] = {0};
     for (size_t i = 0U; i < n; ++i) {
-        uint32_t u = (uint32_t)arr[i] ^ 0x80000000U;
-        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * 8U)) & 0xFFU);
+        uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
         ++count[b + 1U];
     }
-    for (size_t i = 1U; i < 257U; ++i) {
+    for (size_t i = 1U; i < RADIX_COUNT_SIZE; ++i) {
         count[i] += count[i - 1U];
     }
 
-    size_t begin[257] = {0};
+    size_t begin[RADIX_COUNT_SIZE] = {0};
     memcpy(begin, count, sizeof(begin));
     for (size_t i = 0U; i < n; ++i) {
-        uint32_t u = (uint32_t)arr[i] ^ 0x80000000U;
-        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * 8U)) & 0xFFU);
+        uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
         buf[count[b]++] = arr[i];
     }
     memcpy(arr, buf, n * sizeof(arr[0]));
 
-    for (size_t b = 0U; b < 256U; ++b) {
+    for (size_t b = 0U; b < RADIX_BUCKETS; ++b) {
         size_t l = begin[b];
         size_t r = begin[b + 1U];
         if (r > l) {
@@ -448,7 +501,7 @@ typedef struct run_type {
 
 static size_t min_run_value(size_t n) {
     size_t r = 0U;
-    while (n >= 64U) {
+    while (n >= TIMSORT_MINRUN_THRESHOLD) {
         r |= n & 1U;
         n >>= 1U;
     }
@@ -514,7 +567,7 @@ void timsort_sort(int *arr, size_t n) {
     RETURN_IF_FAIL(buf != NULL, "timsort_sort: no memory");
 
     size_t minrun = min_run_value(n);
-    run_type stack[128] = {{0U, 0U}};
+    run_type stack[TIMSORT_STACK_CAPACITY] = {{0U, 0U}};
     size_t top = 0U;
     size_t pos = 0U;
 
@@ -557,12 +610,12 @@ void timsort_sort(int *arr, size_t n) {
 static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
     while (l < r) {
         size_t len = (size_t)(r - l + 1);
-        if (len < 24U) {
+        if (len < PDQSORT_INSERTION_THRESHOLD) {
             insertion_sort(arr + l, len);
             return;
         }
         if (bad == 0U) {
-            heap_kary_sort(arr + l, len, 4U);
+            heap_kary_sort(arr + l, len, PDQSORT_FALLBACK_HEAP_K);
             return;
         }
 
@@ -570,7 +623,7 @@ static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
         size_t left_len = (size_t)((p.left > l) ? (p.left - l) : 0);
         size_t right_len = (size_t)((r > p.right) ? (r - p.right) : 0);
         size_t bigger = (left_len > right_len) ? left_len : right_len;
-        if (bigger * 8U > len * 7U) {
+        if (bigger * PDQSORT_BAD_PARTITION_NUMERATOR > len * PDQSORT_BAD_PARTITION_DENOMINATOR) {
             --bad;
         }
 
@@ -587,7 +640,7 @@ static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
 void pdqsort_sort(int *arr, size_t n) {
     HARD_ASSERT(arr != NULL || n == 0U, "pdqsort_sort: invalid args");
     if (n > 1U) {
-        size_t bad = depth_limit(n, 2.0);
-        pdqsort_impl(arr, 0, (ptrdiff_t)n - 1, bad + 4U);
+        size_t bad = depth_limit(n, PDQSORT_DEPTH_COEF);
+        pdqsort_impl(arr, 0, (ptrdiff_t)n - 1, bad + PDQSORT_EXTRA_BAD_PARTITIONS);
     }
 }

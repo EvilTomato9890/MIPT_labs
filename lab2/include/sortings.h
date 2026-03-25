@@ -1,5 +1,5 @@
-#ifndef LAB3_SORTINGS_H_INCLUDED
-#define LAB3_SORTINGS_H_INCLUDED
+#ifndef LAB2_SORTINGS_H_INCLUDED
+#define LAB2_SORTINGS_H_INCLUDED
 
 #include <stddef.h>
 
@@ -27,6 +27,8 @@ void quick_three_way_sort(int *arr, size_t n);
 void quick_best_sort(int *arr, size_t n, pivot_strategy_type strategy);
 
 void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef);
+void introsort_config_sort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef,
+                           pivot_strategy_type pivot_strategy, sorting_fn small_sort);
 
 void lsd_radix_sort(int *arr, size_t n);
 void msd_radix_sort(int *arr, size_t n);
