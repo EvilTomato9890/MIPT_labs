@@ -12,15 +12,14 @@ typedef struct named_sorting {
     sorting_fn fn;
 } named_sorting;
 
-static void heap_k2(int *arr, size_t n) { heap_kary_sort(arr, n, 2U); }
-static void heap_k3(int *arr, size_t n) { heap_kary_sort(arr, n, 3U); }
-static void heap_k4(int *arr, size_t n) { heap_kary_sort(arr, n, 4U); }
-static void heap_k5(int *arr, size_t n) { heap_kary_sort(arr, n, 5U); }
-static void heap_k6(int *arr, size_t n) { heap_kary_sort(arr, n, 6U); }
-static void heap_k7(int *arr, size_t n) { heap_kary_sort(arr, n, 7U); }
-static void heap_k8(int *arr, size_t n) { heap_kary_sort(arr, n, 8U); }
-static void heap_k9(int *arr, size_t n) { heap_kary_sort(arr, n, 9U); }
-static void heap_k10(int *arr, size_t n) { heap_kary_sort(arr, n, 10U); }
+static void quick_center_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_CENTER); }
+static void quick_median3_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3); }
+static void quick_random_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_RANDOM); }
+static void quick_median3_random_pivot(int *arr, size_t n) { quick_best_sort(arr, n, PIVOT_MEDIAN3_RANDOM); }
+
+static void introsort_t16_d2_k2(int *arr, size_t n) { introsort(arr, n, 16U, 2U, 2.0); }
+static void introsort_t32_d2_k4(int *arr, size_t n) { introsort(arr, n, 32U, 4U, 2.0); }
+static void introsort_t64_d3_k8(int *arr, size_t n) { introsort(arr, n, 64U, 8U, 3.0); }
 
 static void run_group(const dataset_config *cfg, const named_sorting *arr, size_t count) {
     for (size_t i = 0U; i < count; ++i) {
@@ -30,35 +29,32 @@ static void run_group(const dataset_config *cfg, const named_sorting *arr, size_
     }
 }
 
-static void run_point_1(const dataset_config *cfg) {
+static void run_point_5(const dataset_config *cfg) {
     named_sorting list[] = {
-        {"insertion", insertion_sort},
-        {"bubble", bubble_sort},
-        {"selection", selection_sort},
-        {"shell_knuth", shell_knuth_sort}
+        {"quick_3way_pivot_center", quick_center_pivot},
+        {"quick_3way_pivot_median3", quick_median3_pivot},
+        {"quick_3way_pivot_random", quick_random_pivot},
+        {"quick_3way_pivot_median3_random", quick_median3_random_pivot}
     };
     run_group(cfg, list, sizeof(list) / sizeof(list[0]));
 }
 
-static void run_point_2(const dataset_config *cfg) {
+static void run_point_6(const dataset_config *cfg) {
     named_sorting list[] = {
-        {"heap_k2", heap_k2},
-        {"heap_k3", heap_k3},
-        {"heap_k4", heap_k4},
-        {"heap_k5", heap_k5},
-        {"heap_k6", heap_k6},
-        {"heap_k7", heap_k7},
-        {"heap_k8", heap_k8},
-        {"heap_k9", heap_k9},
-        {"heap_k10", heap_k10}
+        {"quick_3way_pivot_median3_baseline", quick_median3_pivot},
+        {"introsort_threshold16_depth2_heap2", introsort_t16_d2_k2},
+        {"introsort_threshold32_depth2_heap4", introsort_t32_d2_k4},
+        {"introsort_threshold64_depth3_heap8", introsort_t64_d3_k8}
     };
     run_group(cfg, list, sizeof(list) / sizeof(list[0]));
 }
 
-static void run_point_3(const dataset_config *cfg) {
+static void run_point_7(const dataset_config *cfg) {
     named_sorting list[] = {
-        {"merge_recursive", merge_recursive_sort},
-        {"merge_iterative", merge_iterative_sort}
+        {"quick_3way_pivot_median3_baseline", quick_median3_pivot},
+        {"merge_iterative_baseline", merge_iterative_sort},
+        {"radix_lsd_bytewise", lsd_radix_sort},
+        {"radix_msd_bytewise", msd_radix_sort}
     };
     run_group(cfg, list, sizeof(list) / sizeof(list[0]));
 }
@@ -83,16 +79,16 @@ int main(int argc, char **argv) {
     fprintf(out, "algorithm,size,seconds\n");
     fclose(out);
 
-    if (strcmp(argv[1], "p1") == 0) {
-        run_point_1(&cfg);
+    if (strcmp(argv[1], "p5") == 0) {
+        run_point_5(&cfg);
         return 0;
     }
-    if (strcmp(argv[1], "p2") == 0) {
-        run_point_2(&cfg);
+    if (strcmp(argv[1], "p6") == 0) {
+        run_point_6(&cfg);
         return 0;
     }
-    if (strcmp(argv[1], "p3") == 0) {
-        run_point_3(&cfg);
+    if (strcmp(argv[1], "p7") == 0) {
+        run_point_7(&cfg);
         return 0;
     }
 
