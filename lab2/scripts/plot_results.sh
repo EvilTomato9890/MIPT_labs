@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 3 ]]; then
-  echo "usage: plot_results.sh <target:all|point1..point10|point4_dup|point7_c_scan> <csv_root_dir> <plots_root_dir>"
+  echo "usage: plot_results.sh <target:all|point1..point10|point4_dup|point4_opt|point4_opt_dup|point7_c_scan> <csv_root_dir> <plots_root_dir>"
   exit 1
 fi
 
@@ -31,7 +31,7 @@ plot_one() {
 }
 
 if [[ "$target" == "all" ]]; then
-  for point_target in point1 point2 point3 point4 point4_dup point5 point6 point7_c_scan point7 point8 point9 point10; do
+  for point_target in point1 point2 point3 point4 point4_dup point4_opt point4_opt_dup point5 point6 point7_c_scan point7 point8 point9 point10; do
     [[ -f "$csv_root/${point_target}.csv" ]] || continue
     plot_one "$point_target"
   done
@@ -39,10 +39,10 @@ if [[ "$target" == "all" ]]; then
 fi
 
 case "$target" in
-  point1|point2|point3|point4|point4_dup|point5|point6|point7_c_scan|point7|point8|point9|point10)
+  point1|point2|point3|point4|point4_dup|point4_opt|point4_opt_dup|point5|point6|point7_c_scan|point7|point8|point9|point10)
     plot_one "$target"
     ;;
   *)
-    die "unknown target '$target'; expected all, point1..point10, point4_dup, or point7_c_scan"
+    die "unknown target '$target'; expected all, point1..point10, point4_dup, point4_opt, point4_opt_dup, or point7_c_scan"
     ;;
 esac

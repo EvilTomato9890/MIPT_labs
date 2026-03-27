@@ -1,5 +1,5 @@
-#ifndef ASSERTS_H_INCLUDED
-#define ASSERTS_H_INCLUDED
+#ifndef LAB2_COMMON_INCLUDE_ASSERTS_H_NCLUDED
+#define LAB2_COMMON_INCLUDE_ASSERTS_H_NCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,4 +51,4 @@
 
 #define SOFT_ASSERT(test, message) SOFT_ASSERT_FUNCTIONAL((test), (message), (void)0)
 
-#endif
+#endif /* LAB2_COMMON_INCLUDE_ASSERTS_H_NCLUDED */

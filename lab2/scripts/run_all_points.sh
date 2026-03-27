@@ -25,5 +25,5 @@ index=0
 for point in "${points[@]}"; do
   index=$((index + 1))
   printf '[run_all_points] (%d/%d) %s\n' "$index" "$total_points" "$point"
-  "$script_dir/run_point.sh" "$point" "$tests_root" "$results_root"
+  bash "$script_dir/run_point.sh" "$point" "$tests_root" "$results_root"
 done

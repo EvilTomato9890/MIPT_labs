@@ -1,6 +1,5 @@
 #include "sortings.h"
 
-#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -38,6 +37,16 @@ typedef struct range_type {
     ptrdiff_t right;
 } range_type;
 
+typedef struct run_type {
+    size_t left;
+    size_t right;
+} run_type;
+
+static void report_sorting_failure(const char *function_name, sorting_status_t status) {
+    LOGGER_ERROR("%s failed with status=%d", function_name, (int)status);
+    SOFT_ASSERT_FUNCTIONAL(0, "Sorting function failed", return);
+}
+
 static void swap_int(int *a, int *b) {
     int tmp = *a;
     *a = *b;
@@ -48,78 +57,14 @@ static size_t parent_kary(size_t idx, size_t k) {
     return (idx - 1U) / k;
 }
 
-void insertion_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "insertion_sort: invalid args");
-    for (size_t i = 1; i < n; ++i) {
-        int key = arr[i];
-        size_t j = i;
-        while (j > 0U && arr[j - 1U] > key) {
-            arr[j] = arr[j - 1U];
-            --j;
-        }
-        arr[j] = key;
-    }
-}
-
-void bubble_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "bubble_sort: invalid args");
-    for (size_t i = 0; i < n; ++i) {
-        int swapped = 0;
-        for (size_t j = 1; j < (n - i); ++j) {
-            if (arr[j - 1U] > arr[j]) {
-                swap_int(&arr[j - 1U], &arr[j]);
-                swapped = 1;
-            }
-        }
-        if (!swapped) {
-            break;
-        }
-    }
-}
-
-void selection_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "selection_sort: invalid args");
-    for (size_t i = 0; i < n; ++i) {
-        size_t min_idx = i;
-        for (size_t j = i + 1U; j < n; ++j) {
-            if (arr[j] < arr[min_idx]) {
-                min_idx = j;
-            }
-        }
-        if (min_idx != i) {
-            swap_int(&arr[i], &arr[min_idx]);
-        }
-    }
-}
-
-void shell_knuth_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "shell_knuth_sort: invalid args");
-    size_t gap = SHELL_KNUTH_BASE_GAP;
-    while (gap < (n / SHELL_KNUTH_FACTOR)) {
-        gap = gap * SHELL_KNUTH_FACTOR + SHELL_KNUTH_INCREMENT;
-    }
-
-    while (gap > 0U) {
-        for (size_t i = gap; i < n; ++i) {
-            int key = arr[i];
-            size_t j = i;
-            while (j >= gap && arr[j - gap] > key) {
-                arr[j] = arr[j - gap];
-                j -= gap;
-            }
-            arr[j] = key;
-        }
-        gap = (gap - SHELL_KNUTH_INCREMENT) / SHELL_KNUTH_FACTOR;
-    }
-}
-
 static size_t max_child_kary(const int *arr, size_t n, size_t k, size_t root) {
     size_t first = root * k + KARY_FIRST_CHILD_OFFSET;
-    size_t best  = first;
-    size_t last  = first + k;
+    size_t best = first;
+    size_t last = first + k;
     if (last > n) {
         last = n;
     }
+
     for (size_t child = first + 1U; child < last; ++child) {
         if (arr[child] > arr[best]) {
             best = child;
@@ -153,31 +98,20 @@ static void sift_down_kary_bottom_up(int *arr, size_t n, size_t k, size_t root) 
     arr[hole] = key;
 }
 
-void heap_kary_sort(int *arr, size_t n, size_t k) {
-    HARD_ASSERT(arr != NULL || n == 0U, "heap_kary_sort: invalid args");
-    HARD_ASSERT(k >= MIN_HEAP_BRANCHING_FACTOR, "heap_kary_sort: k must be >= 2");
-    if (n < 2U) {
-        return;
-    }
-
-    size_t last_parent = (n - 2U) / k;
-    for (size_t i = last_parent + 1U; i > 0U; --i) {
-        sift_down_kary_bottom_up(arr, n, k, i - 1U);
-    }
-
-    for (size_t end = n; end > 1U; --end) {
-        swap_int(&arr[0], &arr[end - 1U]);
-        sift_down_kary_bottom_up(arr, end - 1U, k, 0U);
-    }
-}
-
 static void merge_two(const int *src, int *dst, size_t left, size_t mid, size_t right) {
     size_t i = left;
     size_t j = mid;
     size_t p = left;
-    while (i < mid && j < right) dst[p++] = (src[i] <= src[j]) ? src[i++] : src[j++];
-    while (i < mid)              dst[p++] = src[i++];
-    while (j < right)            dst[p++] = src[j++];
+
+    while (i < mid && j < right) {
+        dst[p++] = (src[i] <= src[j]) ? src[i++] : src[j++];
+    }
+    while (i < mid) {
+        dst[p++] = src[i++];
+    }
+    while (j < right) {
+        dst[p++] = src[j++];
+    }
 }
 
 static void merge_recursive_impl(int *arr, int *buf, size_t left, size_t right) {
@@ -192,89 +126,57 @@ static void merge_recursive_impl(int *arr, int *buf, size_t left, size_t right) 
     memcpy(arr + left, buf + left, (right - left) * sizeof(arr[0]));
 }
 
-void merge_recursive_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "merge_recursive_sort: invalid args");
-    int *buf = (int *)calloc(n, sizeof(int));
-    RETURN_IF_FAIL(buf != NULL || n == 0U, "merge_recursive_sort: no memory");
-    merge_recursive_impl(arr, buf, 0U, n);
-    free(buf);
-}
-
-void merge_iterative_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "merge_iterative_sort: invalid args");
-    int *buf = (int *)calloc(n, sizeof(int));
-    RETURN_IF_FAIL(buf != NULL || n == 0U, "merge_iterative_sort: no memory");
-
-    int *src = arr;
-    int *dst = buf;
-    for (size_t width = 1U; width < n; width <<= 1U) {
-        for (size_t left = 0U; left < n; left += (width << 1U)) {
-
-            size_t mid   = left + width;
-            size_t right = left + (width << 1U);
-            if (mid > n)   mid = n;
-            if (right > n) right = n;
-            
-            merge_two(src, dst, left, mid, right);
-        }
-        int *tmp = src;
-        src = dst;
-        dst = tmp;
+static ptrdiff_t pick_pivot(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    ptrdiff_t center = left + (right - left) / 2;
+    if (strategy == PIVOT_CENTER) {
+        return center;
+    }
+    if (strategy == PIVOT_RANDOM) {
+        return left + (ptrdiff_t)(rand() % (int)(right - left + 1));
     }
 
-    if (src != arr) {
-        memcpy(arr, src, n * sizeof(arr[0]));
-    }
-    free(buf);
-}
-
-static ptrdiff_t pick_pivot(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    ptrdiff_t c = l + (r - l) / 2;
-    if (s == PIVOT_CENTER) return c;
-    if (s == PIVOT_RANDOM) {
-        return l + (ptrdiff_t)(rand() % (int)(r - l + 1));
-    }
-
-    ptrdiff_t a = l;
-    ptrdiff_t b = c;
-    ptrdiff_t d = r;
-    if (s == PIVOT_MEDIAN3_RANDOM) {
-        a = l + (ptrdiff_t)(rand() % (int)(r - l + 1));
-        b = l + (ptrdiff_t)(rand() % (int)(r - l + 1));
-        d = l + (ptrdiff_t)(rand() % (int)(r - l + 1));
+    ptrdiff_t a = left;
+    ptrdiff_t b = center;
+    ptrdiff_t c = right;
+    if (strategy == PIVOT_MEDIAN3_RANDOM) {
+        a = left + (ptrdiff_t)(rand() % (int)(right - left + 1));
+        b = left + (ptrdiff_t)(rand() % (int)(right - left + 1));
+        c = left + (ptrdiff_t)(rand() % (int)(right - left + 1));
     }
 
     int x = arr[a];
     int y = arr[b];
-    int z = arr[d];
+    int z = arr[c];
     if ((x <= y && y <= z) || (z <= y && y <= x)) {
         return b;
     }
     if ((y <= x && x <= z) || (z <= x && x <= y)) {
         return a;
     }
-    return d;
+    return c;
 }
 
-static ptrdiff_t partition_lomuto(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    ptrdiff_t p = pick_pivot(arr, l, r, s);
-    int pv = arr[p];
-    swap_int(&arr[p], &arr[r]);
-    ptrdiff_t i = l;
-    for (ptrdiff_t j = l; j < r; ++j) {
-        if (arr[j] <= pv) {
+static ptrdiff_t partition_lomuto(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    ptrdiff_t pivot_index = pick_pivot(arr, left, right, strategy);
+    int pivot_value = arr[pivot_index];
+    swap_int(&arr[pivot_index], &arr[right]);
+
+    ptrdiff_t i = left;
+    for (ptrdiff_t j = left; j < right; ++j) {
+        if (arr[j] <= pivot_value) {
             swap_int(&arr[i], &arr[j]);
             ++i;
         }
     }
-    swap_int(&arr[i], &arr[r]);
+    swap_int(&arr[i], &arr[right]);
     return i;
 }
 
-static ptrdiff_t partition_hoare(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    int pivot = arr[pick_pivot(arr, l, r, s)];
-    ptrdiff_t i = l - 1;
-    ptrdiff_t j = r + 1;
+static ptrdiff_t partition_hoare(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    int pivot = arr[pick_pivot(arr, left, right, strategy)];
+    ptrdiff_t i = left - 1;
+    ptrdiff_t j = right + 1;
+
     while (1) {
         do {
             ++i;
@@ -284,16 +186,19 @@ static ptrdiff_t partition_hoare(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strat
             --j;
         } while (arr[j] > pivot);
 
-        if (i >= j) return j;
+        if (i >= j) {
+            return j;
+        }
         swap_int(&arr[i], &arr[j]);
     }
 }
 
-static range_type partition_three_way(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    int pivot = arr[pick_pivot(arr, l, r, s)];
-    ptrdiff_t lt = l;
-    ptrdiff_t i  = l;
-    ptrdiff_t gt = r;
+static range_type partition_three_way(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    int pivot = arr[pick_pivot(arr, left, right, strategy)];
+    ptrdiff_t lt = left;
+    ptrdiff_t i = left;
+    ptrdiff_t gt = right;
+
     while (i <= gt) {
         if (arr[i] < pivot) {
             swap_int(&arr[lt++], &arr[i++]);
@@ -303,201 +208,66 @@ static range_type partition_three_way(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_
             ++i;
         }
     }
-    range_type rg = {lt, gt};
-    return rg;
+
+    range_type range = {lt, gt};
+    return range;
 }
 
-static void quick_lomuto_impl(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    while (l < r) {
-        ptrdiff_t p = partition_lomuto(arr, l, r, s);
-        if (p - l < r - p) {
-            quick_lomuto_impl(arr, l, p - 1, s);
-            l = p + 1;
+static void quick_lomuto_impl(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    while (left < right) {
+        ptrdiff_t pivot = partition_lomuto(arr, left, right, strategy);
+        if (pivot - left < right - pivot) {
+            quick_lomuto_impl(arr, left, pivot - 1, strategy);
+            left = pivot + 1;
         } else {
-            quick_lomuto_impl(arr, p + 1, r, s);
-            r = p - 1;
+            quick_lomuto_impl(arr, pivot + 1, right, strategy);
+            right = pivot - 1;
         }
     }
 }
 
-static void quick_hoare_impl(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    while (l < r) {
-        ptrdiff_t p = partition_hoare(arr, l, r, s);
-        if (p - l < r - p) {
-            quick_hoare_impl(arr, l, p, s);
-            l = p + 1;
+static void quick_hoare_impl(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    while (left < right) {
+        ptrdiff_t pivot = partition_hoare(arr, left, right, strategy);
+        if (pivot - left < right - pivot) {
+            quick_hoare_impl(arr, left, pivot, strategy);
+            left = pivot + 1;
         } else {
-            quick_hoare_impl(arr, p + 1, r, s);
-            r = p;
+            quick_hoare_impl(arr, pivot + 1, right, strategy);
+            right = pivot;
         }
     }
 }
 
-static void quick_three_way_impl(int *arr, ptrdiff_t l, ptrdiff_t r, pivot_strategy_type s) {
-    while (l < r) {
-        range_type p = partition_three_way(arr, l, r, s);
-        if ((p.left - l) < (r - p.right)) {
-            quick_three_way_impl(arr, l, p.left - 1, s);
-            l = p.right + 1;
+static void quick_three_way_impl(int *arr, ptrdiff_t left, ptrdiff_t right, pivot_strategy_type strategy) {
+    while (left < right) {
+        range_type range = partition_three_way(arr, left, right, strategy);
+        if ((range.left - left) < (right - range.right)) {
+            quick_three_way_impl(arr, left, range.left - 1, strategy);
+            left = range.right + 1;
         } else {
-            quick_three_way_impl(arr, p.right + 1, r, s);
-            r = p.left - 1;
+            quick_three_way_impl(arr, range.right + 1, right, strategy);
+            right = range.left - 1;
         }
-    }
-}
-
-void quick_lomuto_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "quick_lomuto_sort: invalid args");
-    if (n > 1U) {
-        quick_lomuto_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
-    }
-}
-
-void quick_hoare_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "quick_hoare_sort: invalid args");
-    if (n > 1U) {
-        quick_hoare_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
-    }
-}
-
-void quick_three_way_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "quick_three_way_sort: invalid args");
-    if (n > 1U) {
-        quick_three_way_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
-    }
-}
-
-void quick_best_sort(int *arr, size_t n, pivot_strategy_type strategy) {
-    HARD_ASSERT(arr != NULL || n == 0U, "quick_best_sort: invalid args");
-    if (n > 1U) {
-        quick_three_way_impl(arr, 0, (ptrdiff_t)n - 1, strategy);
     }
 }
 
 static size_t depth_limit(size_t n, double coef) {
-    if (n < 2U) return 0U;
-    double v = coef * log2((double)n);
-    return (size_t)((v < 1.0) ? 1.0 : v);
+    if (n < 2U) {
+        return 0U;
+    }
+
+    double value = coef * log2((double)n);
+    return (size_t)((value < 1.0) ? 1.0 : value);
 }
-
-static void introsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r,
-                           size_t threshold, size_t heap_k, size_t depth,
-                           pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
-    while (l < r) {
-        size_t len = (size_t)(r - l + 1);
-        if (len <= threshold) {
-            small_sort(arr + l, len);
-            return;
-        }
-        if (depth == 0U) {
-            heap_kary_sort(arr + l, len, heap_k);
-            return;
-        }
-        range_type p = partition_three_way(arr, l, r, pivot_strategy);
-        --depth;
-        introsort_impl(arr, l, p.left - 1, threshold, heap_k, depth, pivot_strategy, small_sort);
-        l = p.right + 1;
-    }
-}
-
-void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef) {
-    introsort_config_sort(arr, n, threshold, heap_k, depth_coef, PIVOT_MEDIAN3, insertion_sort);
-}
-
-void introsort_config_sort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef,
-                           pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
-    HARD_ASSERT(arr != NULL || n == 0U, "introsort: invalid args");
-    HARD_ASSERT(threshold >= 2U, "introsort: threshold must be >= 2");
-    HARD_ASSERT(heap_k >= 2U, "introsort: heap_k must be >= 2");
-    HARD_ASSERT(small_sort != NULL, "introsort: small_sort must not be NULL");
-    if (n > 1U) {
-        introsort_impl(arr, 0, (ptrdiff_t)n - 1,
-                       threshold, heap_k, depth_limit(n, depth_coef),
-                       pivot_strategy, small_sort);
-    }
-}
-
-void lsd_radix_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "lsd_radix_sort: invalid args");
-    int *buf = (int *)calloc(n, sizeof(int));
-    RETURN_IF_FAIL(buf != NULL || n == 0U, "lsd_radix_sort: no memory");
-
-    for (size_t byte = 0U; byte < sizeof(int); ++byte) {
-        size_t count[RADIX_BUCKETS] = {0};
-        for (size_t i = 0U; i < n; ++i) {
-            uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
-            size_t b = (size_t)((u >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
-            ++count[b];
-        }
-        size_t sum = 0U;
-        for (size_t i = 0U; i < RADIX_BUCKETS; ++i) {
-            size_t cur = count[i];
-            count[i] = sum;
-            sum += cur;
-        }
-        for (size_t i = 0U; i < n; ++i) {
-            uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
-            size_t b = (size_t)((u >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
-            buf[count[b]++] = arr[i];
-        }
-        memcpy(arr, buf, n * sizeof(arr[0]));
-    }
-    free(buf);
-}
-
-static void msd_byte_sort(int *arr, int *buf, size_t n, size_t byte) {
-    if (n < 2U || byte >= sizeof(int)) {
-        return;
-    }
-
-    size_t count[RADIX_COUNT_SIZE] = {0};
-    for (size_t i = 0U; i < n; ++i) {
-        uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
-        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
-        ++count[b + 1U];
-    }
-    for (size_t i = 1U; i < RADIX_COUNT_SIZE; ++i) {
-        count[i] += count[i - 1U];
-    }
-
-    size_t begin[RADIX_COUNT_SIZE] = {0};
-    memcpy(begin, count, sizeof(begin));
-    for (size_t i = 0U; i < n; ++i) {
-        uint32_t u = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
-        size_t b = (size_t)((u >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
-        buf[count[b]++] = arr[i];
-    }
-    memcpy(arr, buf, n * sizeof(arr[0]));
-
-    for (size_t b = 0U; b < RADIX_BUCKETS; ++b) {
-        size_t l = begin[b];
-        size_t r = begin[b + 1U];
-        if (r > l) {
-            msd_byte_sort(arr + l, buf + l, r - l, byte + 1U);
-        }
-    }
-}
-
-void msd_radix_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "msd_radix_sort: invalid args");
-    int *buf = (int *)calloc(n, sizeof(int));
-    RETURN_IF_FAIL(buf != NULL || n == 0U, "msd_radix_sort: no memory");
-    msd_byte_sort(arr, buf, n, 0U);
-    free(buf);
-}
-
-typedef struct run_type {
-    size_t left;
-    size_t right;
-} run_type;
 
 static size_t min_run_value(size_t n) {
-    size_t r = 0U;
+    size_t remainder = 0U;
     while (n >= TIMSORT_MINRUN_THRESHOLD) {
-        r |= n & 1U;
+        remainder |= n & 1U;
         n >>= 1U;
     }
-    return n + r;
+    return n + remainder;
 }
 
 static void reverse_part(int *arr, size_t left, size_t right) {
@@ -509,7 +279,9 @@ static void reverse_part(int *arr, size_t left, size_t right) {
 }
 
 static size_t find_run(int *arr, size_t n, size_t start) {
-    if (start + 1U >= n) return n;
+    if (start + 1U >= n) {
+        return n;
+    }
 
     size_t i = start + 1U;
     if (arr[i] < arr[i - 1U]) {
@@ -525,36 +297,377 @@ static size_t find_run(int *arr, size_t n, size_t start) {
     return i;
 }
 
-static void merge_inplace_buffer(int *arr, int *buf, size_t l, size_t m, size_t r) {
-    size_t len = m - l;
-    memcpy(buf, arr + l, len * sizeof(arr[0]));
+static void merge_inplace_buffer(int *arr, int *buf, size_t left, size_t mid, size_t right) {
+    size_t left_len = mid - left;
+    memcpy(buf, arr + left, left_len * sizeof(arr[0]));
+
     size_t i = 0U;
-    size_t j = m;
-    size_t p = l;
-    while (i < len && j < r) {
-        arr[p++] = (buf[i] <= arr[j]) ? buf[i++] : arr[j++];
+    size_t j = mid;
+    size_t pos = left;
+    while (i < left_len && j < right) {
+        arr[pos++] = (buf[i] <= arr[j]) ? buf[i++] : arr[j++];
     }
-    while (i < len) {
-        arr[p++] = buf[i++];
+    while (i < left_len) {
+        arr[pos++] = buf[i++];
     }
 }
 
 static void merge_at(int *arr, int *buf, run_type *stack, size_t idx) {
-    size_t l = stack[idx].left;
-    size_t m = stack[idx].right;
-    size_t r = stack[idx + 1U].right;
-    merge_inplace_buffer(arr, buf, l, m, r);
-    stack[idx].right = r;
+    size_t left = stack[idx].left;
+    size_t mid = stack[idx].right;
+    size_t right = stack[idx + 1U].right;
+    merge_inplace_buffer(arr, buf, left, mid, right);
+    stack[idx].right = right;
 }
 
-void timsort_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "timsort_sort: invalid args");
+sorting_status_t insertion_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    for (size_t i = 1U; i < n; ++i) {
+        int key = arr[i];
+        size_t j = i;
+        while (j > 0U && arr[j - 1U] > key) {
+            arr[j] = arr[j - 1U];
+            --j;
+        }
+        arr[j] = key;
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t bubble_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    for (size_t i = 0U; i < n; ++i) {
+        int swapped = 0;
+        for (size_t j = 1U; j < n - i; ++j) {
+            if (arr[j - 1U] > arr[j]) {
+                swap_int(&arr[j - 1U], &arr[j]);
+                swapped = 1;
+            }
+        }
+        if (!swapped) {
+            break;
+        }
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t selection_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    for (size_t i = 0U; i < n; ++i) {
+        size_t min_idx = i;
+        for (size_t j = i + 1U; j < n; ++j) {
+            if (arr[j] < arr[min_idx]) {
+                min_idx = j;
+            }
+        }
+        if (min_idx != i) {
+            swap_int(&arr[i], &arr[min_idx]);
+        }
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t shell_knuth_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    size_t gap = SHELL_KNUTH_BASE_GAP;
+    while (gap < n / SHELL_KNUTH_FACTOR) {
+        gap = gap * SHELL_KNUTH_FACTOR + SHELL_KNUTH_INCREMENT;
+    }
+
+    while (gap > 0U) {
+        for (size_t i = gap; i < n; ++i) {
+            int key = arr[i];
+            size_t j = i;
+            while (j >= gap && arr[j - gap] > key) {
+                arr[j] = arr[j - gap];
+                j -= gap;
+            }
+            arr[j] = key;
+        }
+        gap = (gap - SHELL_KNUTH_INCREMENT) / SHELL_KNUTH_FACTOR;
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t heap_kary_sort_checked(int *arr, size_t n, size_t k) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL(k >= MIN_HEAP_BRANCHING_FACTOR, "Heap branching factor must be at least 2",
+                           return SORTING_STATUS_INVALID_ARG);
+
     if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    size_t last_parent = (n - 2U) / k;
+    for (size_t i = last_parent + 1U; i > 0U; --i) {
+        sift_down_kary_bottom_up(arr, n, k, i - 1U);
+    }
+
+    for (size_t end = n; end > 1U; --end) {
+        swap_int(&arr[0], &arr[end - 1U]);
+        sift_down_kary_bottom_up(arr, end - 1U, k, 0U);
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t merge_recursive_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    int *buf = calloc(n, sizeof(buf[0]));
+    RETURN_IF_ERROR(buf == NULL, SORTING_STATUS_ALLOC_FAIL,
+                    "merge_recursive_sort: no memory for %zu integers", n);
+
+    merge_recursive_impl(arr, buf, 0U, n);
+    free(buf);
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t merge_iterative_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    int *buf = calloc(n, sizeof(buf[0]));
+    RETURN_IF_ERROR(buf == NULL, SORTING_STATUS_ALLOC_FAIL,
+                    "merge_iterative_sort: no memory for %zu integers", n);
+
+    int *src = arr;
+    int *dst = buf;
+    for (size_t width = 1U; width < n; width <<= 1U) {
+        for (size_t left = 0U; left < n; left += (width << 1U)) {
+            size_t mid = left + width;
+            size_t right = left + (width << 1U);
+            if (mid > n) {
+                mid = n;
+            }
+            if (right > n) {
+                right = n;
+            }
+            merge_two(src, dst, left, mid, right);
+        }
+
+        int *tmp = src;
+        src = dst;
+        dst = tmp;
+    }
+
+    if (src != arr) {
+        memcpy(arr, src, n * sizeof(arr[0]));
+    }
+    free(buf);
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t quick_lomuto_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        quick_lomuto_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t quick_hoare_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        quick_hoare_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t quick_three_way_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        quick_three_way_impl(arr, 0, (ptrdiff_t)n - 1, PIVOT_CENTER);
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t quick_best_sort_checked(int *arr, size_t n, pivot_strategy_type strategy) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        quick_three_way_impl(arr, 0, (ptrdiff_t)n - 1, strategy);
+    }
+    return SORTING_STATUS_OK;
+}
+
+static sorting_status_t introsort_impl(int *arr, ptrdiff_t left, ptrdiff_t right,
+                                       size_t threshold, size_t heap_k, size_t depth,
+                                       pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
+    while (left < right) {
+        size_t len = (size_t)(right - left + 1);
+        if (len <= threshold) {
+            small_sort(arr + left, len);
+            return SORTING_STATUS_OK;
+        }
+        if (depth == 0U) {
+            return heap_kary_sort_checked(arr + left, len, heap_k);
+        }
+
+        range_type range = partition_three_way(arr, left, right, pivot_strategy);
+        --depth;
+        sorting_status_t status = introsort_impl(arr, left, range.left - 1, threshold, heap_k, depth,
+                                                 pivot_strategy, small_sort);
+        if (status != SORTING_STATUS_OK) {
+            return status;
+        }
+        left = range.right + 1;
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t introsort_checked(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef) {
+    return introsort_config_sort_checked(arr, n, threshold, heap_k, depth_coef,
+                                         PIVOT_MEDIAN3, insertion_sort);
+}
+
+sorting_status_t introsort_config_sort_checked(int *arr, size_t n, size_t threshold, size_t heap_k,
+                                               double depth_coef, pivot_strategy_type pivot_strategy,
+                                               sorting_fn small_sort) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL(threshold >= 2U, "Introsort threshold must be at least 2",
+                           return SORTING_STATUS_INVALID_ARG);
+    SOFT_ASSERT_FUNCTIONAL(heap_k >= 2U, "Heap branching factor must be at least 2",
+                           return SORTING_STATUS_INVALID_ARG);
+    SOFT_ASSERT_FUNCTIONAL(depth_coef > 0.0, "Introsort depth coefficient must be positive",
+                           return SORTING_STATUS_INVALID_ARG);
+    SOFT_ASSERT_FUNCTIONAL(small_sort != NULL, "Small_sort function must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        return introsort_impl(arr, 0, (ptrdiff_t)n - 1,
+                              threshold, heap_k, depth_limit(n, depth_coef),
+                              pivot_strategy, small_sort);
+    }
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t lsd_radix_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    int *buf = calloc(n, sizeof(buf[0]));
+    RETURN_IF_ERROR(buf == NULL, SORTING_STATUS_ALLOC_FAIL,
+                    "lsd_radix_sort: no memory for %zu integers", n);
+
+    for (size_t byte = 0U; byte < sizeof(int); ++byte) {
+        size_t count[RADIX_BUCKETS] = {0};
+        for (size_t i = 0U; i < n; ++i) {
+            uint32_t value = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+            size_t bucket = (size_t)((value >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
+            ++count[bucket];
+        }
+
+        size_t sum = 0U;
+        for (size_t i = 0U; i < RADIX_BUCKETS; ++i) {
+            size_t current = count[i];
+            count[i] = sum;
+            sum += current;
+        }
+
+        for (size_t i = 0U; i < n; ++i) {
+            uint32_t value = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+            size_t bucket = (size_t)((value >> (byte * BITS_PER_BYTE)) & BYTE_MASK);
+            buf[count[bucket]++] = arr[i];
+        }
+        memcpy(arr, buf, n * sizeof(arr[0]));
+    }
+
+    free(buf);
+    return SORTING_STATUS_OK;
+}
+
+static void msd_byte_sort(int *arr, int *buf, size_t n, size_t byte) {
+    if (n < 2U || byte >= sizeof(int)) {
         return;
     }
 
-    int *buf = (int *)calloc(n, sizeof(int));
-    RETURN_IF_FAIL(buf != NULL, "timsort_sort: no memory");
+    size_t count[RADIX_COUNT_SIZE] = {0};
+    for (size_t i = 0U; i < n; ++i) {
+        uint32_t value = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+        size_t bucket = (size_t)((value >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
+        ++count[bucket + 1U];
+    }
+
+    for (size_t i = 1U; i < RADIX_COUNT_SIZE; ++i) {
+        count[i] += count[i - 1U];
+    }
+
+    size_t begin[RADIX_COUNT_SIZE] = {0};
+    memcpy(begin, count, sizeof(begin));
+    for (size_t i = 0U; i < n; ++i) {
+        uint32_t value = (uint32_t)arr[i] ^ SIGN_BIT_MASK;
+        size_t bucket = (size_t)((value >> ((sizeof(int) - byte - 1U) * BITS_PER_BYTE)) & BYTE_MASK);
+        buf[count[bucket]++] = arr[i];
+    }
+    memcpy(arr, buf, n * sizeof(arr[0]));
+
+    for (size_t bucket = 0U; bucket < RADIX_BUCKETS; ++bucket) {
+        size_t left = begin[bucket];
+        size_t right = begin[bucket + 1U];
+        if (right > left) {
+            msd_byte_sort(arr + left, buf + left, right - left, byte + 1U);
+        }
+    }
+}
+
+sorting_status_t msd_radix_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    int *buf = calloc(n, sizeof(buf[0]));
+    RETURN_IF_ERROR(buf == NULL, SORTING_STATUS_ALLOC_FAIL,
+                    "msd_radix_sort: no memory for %zu integers", n);
+
+    msd_byte_sort(arr, buf, n, 0U);
+    free(buf);
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t timsort_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n < 2U) {
+        return SORTING_STATUS_OK;
+    }
+
+    int *buf = calloc(n, sizeof(buf[0]));
+    RETURN_IF_ERROR(buf == NULL, SORTING_STATUS_ALLOC_FAIL,
+                    "timsort_sort: no memory for %zu integers", n);
 
     size_t minrun = min_run_value(n);
     run_type stack[TIMSORT_STACK_CAPACITY] = {{0U, 0U}};
@@ -568,15 +681,23 @@ void timsort_sort(int *arr, size_t n) {
             if (need > n) {
                 need = n;
             }
-            insertion_sort(arr + pos, need - pos);
+            sorting_status_t status = insertion_sort_checked(arr + pos, need - pos);
+            if (status != SORTING_STATUS_OK) {
+                free(buf);
+                return status;
+            }
             run_end = need;
         }
 
+        RETURN_IF_ERROR_CLEANUP(top >= TIMSORT_STACK_CAPACITY,
+                                SORTING_STATUS_OVERFLOW,
+                                free(buf),
+                                "timsort_sort: run stack capacity exceeded for n=%zu", n);
         stack[top++] = (run_type){pos, run_end};
         pos = run_end;
 
         while (top > 1U) {
-            size_t x     = top - 1U;
+            size_t x = top - 1U;
             size_t len_x = stack[x].right - stack[x].left;
             size_t len_y = stack[x - 1U].right - stack[x - 1U].left;
             if (len_y > len_x) {
@@ -594,43 +715,106 @@ void timsort_sort(int *arr, size_t n) {
         merge_at(arr, buf, stack, top - 2U);
         --top;
     }
+
     free(buf);
+    return SORTING_STATUS_OK;
 }
 
-static void pdqsort_impl(int *arr, ptrdiff_t l, ptrdiff_t r, size_t bad) {
-    while (l < r) {
-        size_t len = (size_t)(r - l + 1);
+static sorting_status_t pdqsort_impl(int *arr, ptrdiff_t left, ptrdiff_t right, size_t bad_partitions) {
+    while (left < right) {
+        size_t len = (size_t)(right - left + 1);
         if (len < PDQSORT_INSERTION_THRESHOLD) {
-            insertion_sort(arr + l, len);
-            return;
+            return insertion_sort_checked(arr + left, len);
         }
-        if (bad == 0U) {
-            heap_kary_sort(arr + l, len, PDQSORT_FALLBACK_HEAP_K);
-            return;
+        if (bad_partitions == 0U) {
+            return heap_kary_sort_checked(arr + left, len, PDQSORT_FALLBACK_HEAP_K);
         }
 
-        range_type p = partition_three_way(arr, l, r, PIVOT_MEDIAN3_RANDOM);
-        size_t left_len  = (size_t)((p.left > l) ? (p.left - l) : 0);
-        size_t right_len = (size_t)((r > p.right) ? (r - p.right) : 0);
-        size_t bigger    = (left_len > right_len) ? left_len : right_len;
+        range_type range = partition_three_way(arr, left, right, PIVOT_MEDIAN3_RANDOM);
+        size_t left_len = (size_t)((range.left > left) ? (range.left - left) : 0);
+        size_t right_len = (size_t)((right > range.right) ? (right - range.right) : 0);
+        size_t bigger = (left_len > right_len) ? left_len : right_len;
         if (bigger * PDQSORT_BAD_PARTITION_NUMERATOR > len * PDQSORT_BAD_PARTITION_DENOMINATOR) {
-            --bad;
+            --bad_partitions;
         }
 
         if (left_len < right_len) {
-            pdqsort_impl(arr, l, p.left - 1, bad);
-            l = p.right + 1;
+            sorting_status_t status = pdqsort_impl(arr, left, range.left - 1, bad_partitions);
+            if (status != SORTING_STATUS_OK) {
+                return status;
+            }
+            left = range.right + 1;
         } else {
-            pdqsort_impl(arr, p.right + 1, r, bad);
-            r = p.left - 1;
+            sorting_status_t status = pdqsort_impl(arr, range.right + 1, right, bad_partitions);
+            if (status != SORTING_STATUS_OK) {
+                return status;
+            }
+            right = range.left - 1;
         }
+    }
+
+    return SORTING_STATUS_OK;
+}
+
+sorting_status_t pdqsort_sort_checked(int *arr, size_t n) {
+    SOFT_ASSERT_FUNCTIONAL(arr != NULL || n == 0U, "Array pointer must not be NULL",
+                           return SORTING_STATUS_NULL_ARG);
+
+    if (n > 1U) {
+        size_t bad = depth_limit(n, PDQSORT_DEPTH_COEF);
+        return pdqsort_impl(arr, 0, (ptrdiff_t)n - 1, bad + PDQSORT_EXTRA_BAD_PARTITIONS);
+    }
+    return SORTING_STATUS_OK;
+}
+
+#define DEFINE_SORT_WRAPPER(name)                                      \
+    void name(int *arr, size_t n) {                                    \
+        sorting_status_t status = name##_checked(arr, n);              \
+        if (status != SORTING_STATUS_OK) {                             \
+            report_sorting_failure(#name, status);                     \
+        }                                                              \
+    }
+
+DEFINE_SORT_WRAPPER(insertion_sort)
+DEFINE_SORT_WRAPPER(bubble_sort)
+DEFINE_SORT_WRAPPER(selection_sort)
+DEFINE_SORT_WRAPPER(shell_knuth_sort)
+DEFINE_SORT_WRAPPER(merge_recursive_sort)
+DEFINE_SORT_WRAPPER(merge_iterative_sort)
+DEFINE_SORT_WRAPPER(quick_lomuto_sort)
+DEFINE_SORT_WRAPPER(quick_hoare_sort)
+DEFINE_SORT_WRAPPER(quick_three_way_sort)
+DEFINE_SORT_WRAPPER(lsd_radix_sort)
+DEFINE_SORT_WRAPPER(msd_radix_sort)
+DEFINE_SORT_WRAPPER(timsort_sort)
+DEFINE_SORT_WRAPPER(pdqsort_sort)
+
+void heap_kary_sort(int *arr, size_t n, size_t k) {
+    sorting_status_t status = heap_kary_sort_checked(arr, n, k);
+    if (status != SORTING_STATUS_OK) {
+        report_sorting_failure("heap_kary_sort", status);
     }
 }
 
-void pdqsort_sort(int *arr, size_t n) {
-    HARD_ASSERT(arr != NULL || n == 0U, "pdqsort_sort: invalid args");
-    if (n > 1U) {
-        size_t bad = depth_limit(n, PDQSORT_DEPTH_COEF);
-        pdqsort_impl(arr, 0, (ptrdiff_t)n - 1, bad + PDQSORT_EXTRA_BAD_PARTITIONS);
+void quick_best_sort(int *arr, size_t n, pivot_strategy_type strategy) {
+    sorting_status_t status = quick_best_sort_checked(arr, n, strategy);
+    if (status != SORTING_STATUS_OK) {
+        report_sorting_failure("quick_best_sort", status);
+    }
+}
+
+void introsort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef) {
+    sorting_status_t status = introsort_checked(arr, n, threshold, heap_k, depth_coef);
+    if (status != SORTING_STATUS_OK) {
+        report_sorting_failure("introsort", status);
+    }
+}
+
+void introsort_config_sort(int *arr, size_t n, size_t threshold, size_t heap_k, double depth_coef,
+                           pivot_strategy_type pivot_strategy, sorting_fn small_sort) {
+    sorting_status_t status = introsort_config_sort_checked(arr, n, threshold, heap_k, depth_coef,
+                                                            pivot_strategy, small_sort);
+    if (status != SORTING_STATUS_OK) {
+        report_sorting_failure("introsort_config_sort", status);
     }
 }

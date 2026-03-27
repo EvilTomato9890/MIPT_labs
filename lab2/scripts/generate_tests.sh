@@ -26,17 +26,17 @@ generate_group() {
   local dataset="$1"
   case "$dataset" in
     small)
-      "$gen_tests_helper" "$tests_root/small_tests" \
+      bash "$gen_tests_helper" "$tests_root/small_tests" \
         "$LAB2_SMALL_FROM" "$LAB2_SMALL_TO" "$LAB2_SMALL_STEP" "$LAB2_SMALL_COPIES" \
         "$limit" "$gen_bin" "$qsort_bin" "$seed"
       ;;
     big)
-      "$gen_tests_helper" "$tests_root/big_tests" \
+      bash "$gen_tests_helper" "$tests_root/big_tests" \
         "$LAB2_BIG_FROM" "$LAB2_BIG_TO" "$LAB2_BIG_STEP" "$LAB2_BIG_COPIES" \
         "$limit" "$gen_bin" "$qsort_bin" "$seed"
       ;;
     dup)
-      "$gen_tests_helper" "$tests_root/test_most_dublicates" \
+      bash "$gen_tests_helper" "$tests_root/test_most_dublicates" \
         "$LAB2_DUP_FROM" "$LAB2_DUP_TO" "$LAB2_DUP_STEP" "$LAB2_DUP_COPIES" \
         "$LAB2_DUP_LIMIT" "$gen_bin" "$qsort_bin" "$seed"
       ;;

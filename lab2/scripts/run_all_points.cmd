@@ -11,7 +11,7 @@ if not errorlevel 1 (
   for /f "delims=" %%I in ('wsl.exe wslpath -a "%~dp0run_all_points.sh"') do set "SCRIPT=%%I"
   for /f "delims=" %%I in ('wsl.exe wslpath -a "%~f1"') do set "TESTS_ROOT=%%I"
   for /f "delims=" %%I in ('wsl.exe wslpath -a "%~f2"') do set "RESULTS_ROOT=%%I"
-  bash -lc "\"!SCRIPT!\" \"!TESTS_ROOT!\" \"!RESULTS_ROOT!\""
+  bash -lc "bash \"!SCRIPT!\" \"!TESTS_ROOT!\" \"!RESULTS_ROOT!\""
   exit /b %errorlevel%
 )
 

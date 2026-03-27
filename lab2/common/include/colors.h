@@ -1,5 +1,5 @@
-#ifndef COLOR_H_INCLUDED
-#define COLOR_H_INCLUDED
+#ifndef LAB2_COMMON_INCLUDE_COLORS_H_NCLUDED
+#define LAB2_COMMON_INCLUDE_COLORS_H_NCLUDED
 
 //! @brief Строка, придающая выводу красный цвет.
 #define RED "\033[31m"
@@ -16,4 +16,4 @@
 //! @brief Строка, очищающая цвет вывода.
 #define RESET "\033[0m"
 
-#endif
+#endif /* LAB2_COMMON_INCLUDE_COLORS_H_NCLUDED */

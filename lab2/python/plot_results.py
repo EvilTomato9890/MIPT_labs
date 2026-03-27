@@ -60,6 +60,24 @@ PLOT_META: dict[str, PlotMeta] = {
         },
         order=("quick_lomuto_partition", "quick_hoare_partition", "quick_three_way_partition"),
     ),
+    "point4_opt": PlotMeta(
+        title="Point 4: quicksort recursion strategies",
+        aliases={
+            "quick_median3_recursive": "quick_recursive",
+            "quick_median3_tailrec": "quick_tailrec",
+            "quick_median3_iterative": "quick_iterative",
+        },
+        order=("quick_median3_recursive", "quick_median3_tailrec", "quick_median3_iterative"),
+    ),
+    "point4_opt_dup": PlotMeta(
+        title="Point 4: recursion strategies on duplicates",
+        aliases={
+            "quick_median3_recursive": "quick_recursive",
+            "quick_median3_tailrec": "quick_tailrec",
+            "quick_median3_iterative": "quick_iterative",
+        },
+        order=("quick_median3_recursive", "quick_median3_tailrec", "quick_median3_iterative"),
+    ),
     "point5": PlotMeta(
         title="Point 5: pivot strategies",
         aliases={

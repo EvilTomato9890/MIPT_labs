@@ -31,6 +31,22 @@ ensure_dataset_dir() {
   [[ -d "$dataset_dir" ]] || die "missing tests directory '$dataset_dir'; generate it first with: bash \"$script_dir/generate_tests.sh\" \"$tests_root\" $LAB2_DEFAULT_LIMIT $LAB2_DEFAULT_SEED $group_name"
 }
 
+resolve_duplicates_dir() {
+  local legacy_dir="$tests_root/test_most_dublicates"
+  local modern_dir="$tests_root/test_most_duplicates"
+
+  if [[ -d "$legacy_dir" ]]; then
+    printf '%s\n' "$legacy_dir"
+    return 0
+  fi
+  if [[ -d "$modern_dir" ]]; then
+    printf '%s\n' "$modern_dir"
+    return 0
+  fi
+
+  printf '%s\n' "$legacy_dir"
+}
+
 validate_dataset_files() {
   local dataset_dir="$1"
   local group_name="$2"
@@ -103,11 +119,19 @@ run_dataset() {
   local group_name="$9"
 
   local csv_path="$csv_dir/$csv_name"
+  local tester_tests_dir="$dataset_dir"
+  local tester_csv_path="$csv_path"
   validate_dataset_files "$dataset_dir" "$group_name" "$from" "$to" "$step" "$copies"
   rm -f "$csv_path"
+
+  if [[ "$tester_bin" == *.exe ]]; then
+    tester_tests_dir="$(native_path "$dataset_dir")"
+    tester_csv_path="$(native_path "$csv_path")"
+  fi
+
   printf '[run_point] %s -> %s using %s\n' "$point_name" "$csv_name" "$dataset_dir"
-  "$tester_bin" "$point_name" "$(native_path "$dataset_dir")" "$(native_path "$csv_path")" "$from" "$to" "$step" "$copies"
-  "$plot_script" "$plot_target" "$csv_dir" "$plots_dir"
+  "$tester_bin" "$point_name" "$tester_tests_dir" "$tester_csv_path" "$from" "$to" "$step" "$copies"
+  bash "$plot_script" "$plot_target" "$csv_dir" "$plots_dir"
 }
 
 case "$point" in
@@ -123,10 +147,15 @@ case "$point" in
     ;;
   p4)
     ensure_dataset_dir "$tests_root/big_tests" big
-    ensure_dataset_dir "$tests_root/test_most_dublicates" dup
+    dup_tests_dir="$(resolve_duplicates_dir)"
+    ensure_dataset_dir "$dup_tests_dir" dup
     run_dataset p4 "$tests_root/big_tests" point4.csv point4 \
       "$LAB2_BIG_FROM" "$LAB2_BIG_TO" "$LAB2_BIG_STEP" "$LAB2_BIG_COPIES" big
-    run_dataset p4 "$tests_root/test_most_dublicates" point4_dup.csv point4_dup \
+    run_dataset p4opt "$tests_root/big_tests" point4_opt.csv point4_opt \
+      "$LAB2_BIG_FROM" "$LAB2_BIG_TO" "$LAB2_BIG_STEP" "$LAB2_BIG_COPIES" big
+    run_dataset p4 "$dup_tests_dir" point4_dup.csv point4_dup \
+      "$LAB2_DUP_FROM" "$LAB2_DUP_TO" "$LAB2_DUP_STEP" "$LAB2_DUP_COPIES" dup
+    run_dataset p4opt "$dup_tests_dir" point4_opt_dup.csv point4_opt_dup \
       "$LAB2_DUP_FROM" "$LAB2_DUP_TO" "$LAB2_DUP_STEP" "$LAB2_DUP_COPIES" dup
     ;;
   p7)

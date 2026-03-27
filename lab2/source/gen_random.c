@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,6 +7,7 @@
 
 #include "asserts.h"
 #include "logger.h"
+#include "return_macros.h"
 
 #define RANDOM_LOW_BITS_MASK       0x7FFFU
 #define RANDOM_HIGH_BITS_MASK      0x3U
@@ -15,6 +18,71 @@
 #define GEN_RANDOM_ARGC_NO_SEED    3
 #define GEN_RANDOM_ARGC_WITH_SEED  4
 
+typedef enum gen_random_status {
+    GEN_RANDOM_STATUS_OK = 0,
+    GEN_RANDOM_STATUS_NULL_ARG,
+    GEN_RANDOM_STATUS_INVALID_ARG,
+    GEN_RANDOM_STATUS_OVERFLOW,
+    GEN_RANDOM_STATUS_ALLOC_FAIL,
+    GEN_RANDOM_STATUS_IO_FAIL
+} gen_random_status_t;
+
+static gen_random_status_t parse_size_arg(const char *text, const char *name, size_t *out) {
+    SOFT_ASSERT_FUNCTIONAL(text != NULL && name != NULL && out != NULL,
+                           "Parse_size arguments must not be NULL",
+                           return GEN_RANDOM_STATUS_NULL_ARG);
+
+    char *end = NULL;
+    errno = 0;
+    unsigned long long parsed = strtoull(text, &end, 10);
+    RETURN_IF_ERROR(errno != 0 || end == text || *end != '\0',
+                    GEN_RANDOM_STATUS_INVALID_ARG,
+                    "gen_random: invalid %s '%s'", name, text);
+    RETURN_IF_ERROR(parsed > SIZE_MAX, GEN_RANDOM_STATUS_OVERFLOW,
+                    "gen_random: %s '%s' overflows size_t", name, text);
+
+    *out = (size_t)parsed;
+    return GEN_RANDOM_STATUS_OK;
+}
+
+static gen_random_status_t parse_limit_arg(const char *text, int *out) {
+    SOFT_ASSERT_FUNCTIONAL(text != NULL && out != NULL,
+                           "Parse_limit arguments must not be NULL",
+                           return GEN_RANDOM_STATUS_NULL_ARG);
+
+    char *end = NULL;
+    errno = 0;
+    unsigned long long parsed = strtoull(text, &end, 10);
+    RETURN_IF_ERROR(errno != 0 || end == text || *end != '\0',
+                    GEN_RANDOM_STATUS_INVALID_ARG,
+                    "gen_random: invalid limit '%s'", text);
+    RETURN_IF_ERROR(parsed == 0ULL, GEN_RANDOM_STATUS_INVALID_ARG,
+                    "gen_random: limit must be greater than zero, got '%s'", text);
+    RETURN_IF_ERROR(parsed > (unsigned long long)INT_MAX, GEN_RANDOM_STATUS_OVERFLOW,
+                    "gen_random: limit must be in [1, %d], got '%s'", INT_MAX, text);
+
+    *out = (int)parsed;
+    return GEN_RANDOM_STATUS_OK;
+}
+
+static gen_random_status_t parse_seed_arg(const char *text, unsigned *out) {
+    SOFT_ASSERT_FUNCTIONAL(text != NULL && out != NULL,
+                           "Parse_seed arguments must not be NULL",
+                           return GEN_RANDOM_STATUS_NULL_ARG);
+
+    char *end = NULL;
+    errno = 0;
+    unsigned long long parsed = strtoull(text, &end, 10);
+    RETURN_IF_ERROR(errno != 0 || end == text || *end != '\0',
+                    GEN_RANDOM_STATUS_INVALID_ARG,
+                    "gen_random: invalid seed '%s'", text);
+    RETURN_IF_ERROR(parsed > (unsigned long long)UINT_MAX, GEN_RANDOM_STATUS_OVERFLOW,
+                    "gen_random: seed '%s' overflows unsigned", text);
+
+    *out = (unsigned)parsed;
+    return GEN_RANDOM_STATUS_OK;
+}
+
 static uint32_t random_u32(void) {
     uint32_t low  = (uint32_t)(rand() & RANDOM_LOW_BITS_MASK);
     uint32_t mid  = (uint32_t)(rand() & RANDOM_LOW_BITS_MASK);
@@ -24,49 +92,77 @@ static uint32_t random_u32(void) {
 
 static uint32_t random_bounded(uint32_t limit) {
     uint32_t bound = limit + 1U;
-    if (bound == 0U) return random_u32();
+    if (bound == 0U) {
+        return random_u32();
+    }
 
     uint32_t threshold = (uint32_t)(-bound % bound);
     while (1) {
         uint32_t value = random_u32();
-        if (value >= threshold) return value % bound;
+        if (value >= threshold) {
+            return value % bound;
+        }
     }
 }
 
-static void write_generated_array(size_t n, uint32_t limit) {
+static gen_random_status_t write_generated_array(size_t n, int limit) {
+    RETURN_IF_ERROR(n > (SIZE_MAX - OUTPUT_BUFFER_EXTRA_CHARS) / GENERATED_CHARS_PER_NUMBER,
+                    GEN_RANDOM_STATUS_OVERFLOW,
+                    "gen_random: requested array size %zu is too large", n);
+
     size_t buffer_size = OUTPUT_BUFFER_EXTRA_CHARS + n * GENERATED_CHARS_PER_NUMBER;
-    char  *buffer      = (char *)calloc(buffer_size, sizeof(char));
-    HARD_ASSERT(buffer != NULL, "gen_random: no memory for output buffer");
+    char *buffer = calloc(buffer_size, sizeof(buffer[0]));
+    RETURN_IF_ERROR(buffer == NULL, GEN_RANDOM_STATUS_ALLOC_FAIL,
+                    "gen_random: no memory for output buffer");
 
     int written = snprintf(buffer, buffer_size, "%zu\n", n);
-    HARD_ASSERT(written > 0, "gen_random: failed to format size");
+    RETURN_IF_ERROR_CLEANUP(written <= 0 || (size_t)written >= buffer_size,
+                            GEN_RANDOM_STATUS_IO_FAIL,
+                            free(buffer),
+                            "gen_random: failed to format size");
     size_t pos = (size_t)written;
 
     for (size_t i = 0U; i < n; ++i) {
-        uint32_t value = random_bounded(limit);
-        written = snprintf(buffer + pos, buffer_size - pos, "%u%c",
+        int value = (int)random_bounded((uint32_t)limit);
+        written = snprintf(buffer + pos, buffer_size - pos, "%d%c",
                            value, (i + 1U == n) ? '\n' : ' ');
-        HARD_ASSERT(written > 0 && (size_t)written < (buffer_size - pos),
-                    "gen_random: output buffer overflow");
+        RETURN_IF_ERROR_CLEANUP(written <= 0 || (size_t)written >= (buffer_size - pos),
+                                GEN_RANDOM_STATUS_IO_FAIL,
+                                free(buffer),
+                                "gen_random: output buffer overflow while writing item %zu", i);
         pos += (size_t)written;
     }
 
-    HARD_ASSERT(fwrite(buffer, sizeof(char), pos, stdout) == pos,
-                "gen_random: fwrite failed");
+    RETURN_IF_ERROR_CLEANUP(fwrite(buffer, sizeof(buffer[0]), pos, stdout) != pos,
+                            GEN_RANDOM_STATUS_IO_FAIL,
+                            free(buffer),
+                            "gen_random: fwrite failed");
     free(buffer);
+    return GEN_RANDOM_STATUS_OK;
 }
 
 int main(int argc, char **argv) {
-    HARD_ASSERT(argc == GEN_RANDOM_ARGC_NO_SEED || argc == GEN_RANDOM_ARGC_WITH_SEED,
-                "usage: gen_random <size> <limit> [seed]");
-    size_t n       =   (size_t)strtoull(argv[1], NULL, 10);
-    uint32_t limit = (uint32_t)strtoul (argv[2], NULL, 10);
-    HARD_ASSERT(limit > 0U, "gen_random: limit must be > 0");
+    RETURN_IF_ERROR(argc != GEN_RANDOM_ARGC_NO_SEED && argc != GEN_RANDOM_ARGC_WITH_SEED,
+                    GEN_RANDOM_STATUS_INVALID_ARG,
+                    "usage: gen_random <size> <limit> [seed]");
 
-    unsigned seed = (argc == GEN_RANDOM_ARGC_WITH_SEED) ? (unsigned)strtoul(argv[3], NULL, 10)
-                                : (unsigned)time(NULL);
+    size_t n = 0U;
+    int limit = 0;
+    gen_random_status_t status = parse_size_arg(argv[1], "size", &n);
+    RETURN_IF_ERROR(status != GEN_RANDOM_STATUS_OK, status,
+                    "gen_random: failed to parse size '%s'", argv[1]);
+    status = parse_limit_arg(argv[2], &limit);
+    RETURN_IF_ERROR(status != GEN_RANDOM_STATUS_OK, status,
+                    "gen_random: failed to parse limit '%s'", argv[2]);
+
+    unsigned seed = (unsigned)time(NULL);
+    if (argc == GEN_RANDOM_ARGC_WITH_SEED) {
+        status = parse_seed_arg(argv[3], &seed);
+        RETURN_IF_ERROR(status != GEN_RANDOM_STATUS_OK, status,
+                        "gen_random: failed to parse seed '%s'", argv[3]);
+    }
+
     srand(seed);
-    LOGGER_INFO("generate n=%zu limit=%u seed=%u", n, limit, seed);
-    write_generated_array(n, limit);
-    return 0;
+    LOGGER_INFO("generate n=%zu limit=%d seed=%u", n, limit, seed);
+    return (int)write_generated_array(n, limit);
 }
