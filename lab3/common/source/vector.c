@@ -6,7 +6,6 @@
 
 #include "asserts.h"
 
-
 #define VECTOR_RETURN_IF_ERROR(error_) \
     do {                               \
         vector_error_t err_ = (error_); \
@@ -108,7 +107,7 @@ static vector_error_t normalize_for_shrink(vector_t* vector) {
 
 
 //================================================================================
-//                      Р С™Р С•Р Р…РЎРѓРЎвЂљРЎР‚РЎС“Р С”РЎвЂљР С•РЎР‚РЎвЂ№ / Р вЂќР ВµРЎРѓРЎвЂљРЎР‚РЎС“Р С”РЎвЂљР С•РЎР‚РЎвЂ№ / Р С™Р С•Р С—Р С‘РЎР‚Р С•Р Р†Р В°Р В»РЎРЉР В·Р С‘Р С”Р С‘
+//                      Constructors / Destructors / Copy helpers
 //================================================================================
 
 vector_error_t vector_init(vector_t* vector, size_t capacity, size_t elem_size) {
@@ -157,7 +156,7 @@ vector_error_t vector_destroy(vector_t* vector) {
 }
 
 //================================================================================
-//                              Р вЂР В°Р В·Р С•Р Р†РЎвЂ№Р Вµ РЎвЂћРЎС“Р Р…Р С”РЎвЂ Р С‘Р С‘
+//                              Basic operations
 //================================================================================
 
 size_t vector_size(const vector_t* vector) {
@@ -172,7 +171,7 @@ size_t vector_capacity(const vector_t* vector) {
 
 void* vector_get(const vector_t* vector, size_t index) {
     HARD_ASSERT(vector != NULL, "vector is NULL");
-    if (index >= vector->size) return NULL; //TODO - Р вЂ”Р В°Р С”Р С‘Р Р…РЎС“РЎвЂљРЎРЉ Р Р† godbolt
+    if (index >= vector->size) return NULL; // TODO: review bounds-check strategy.
     return (void*)vector_ptr(vector, index);
 }
 
@@ -198,7 +197,7 @@ void vector_clear(vector_t* vector) {
 }
 
 //================================================================================
-//                           Р С›РЎРѓР Р…Р С•Р Р†Р Р…РЎвЂ№Р Вµ РЎвЂћРЎС“Р Р…Р С”РЎвЂ Р С‘Р С‘
+//                           Core modifying operations
 //================================================================================
 
 vector_error_t vector_push_back(vector_t* vector, const void* elem) {
@@ -315,7 +314,7 @@ size_t vector_upper_bound(const vector_t* vector,
 }
 
 //================================================================================
-//                           Р РЋР С•РЎР‚РЎвЂљР С‘РЎР‚Р С•Р Р†Р С”Р С‘
+//                           Sorting helpers
 //================================================================================
 
 vector_error_t vector_swap(vector_t* vector, size_t idx1, size_t idx2) {
@@ -329,12 +328,12 @@ vector_error_t vector_swap(vector_t* vector, size_t idx1, size_t idx2) {
     size_t i = vector->elem_size;
 #define DOSHIT(type)                  \
     while (i >= sizeof(type)) {       \
-        type tmp          = *(type*)elem_ptr1;      \
+        type tmp          = *(type*)elem_ptr1;  \
         *(type*)elem_ptr1 = *(type*)elem_ptr2;  \
-        *(type*)elem_ptr2 = tmp;           \
-        elem_ptr1 += sizeof(type);         \
-        elem_ptr2 += sizeof(type);         \
-        i          = i - sizeof(type);         \
+        *(type*)elem_ptr2 = tmp;                \
+        elem_ptr1 += sizeof(type);              \
+        elem_ptr2 += sizeof(type);              \
+        i          = i - sizeof(type);          \
     }
 
     DOSHIT(uint64_t)
@@ -345,8 +344,8 @@ vector_error_t vector_swap(vector_t* vector, size_t idx1, size_t idx2) {
     return VEC_ERR_OK;
 }
 
-//Р В Р В°Р В±Р С•РЎвЂљР В°Р ВµРЎвЂљ Р Р…Р В° Р С•РЎвЂљРЎР‚Р ВµР В·Р С”Р В°РЎвЂ¦ ,Р Р…Р Вµ Р Р…Р В° Р С—Р С•Р В»РЎС“Р С‘Р Р…РЎвЂљР ВµРЎР‚Р Р†Р В°Р В»Р В°РЎвЂ¦
-static vector_error_t vector_qsort_impl(vector_t* vector, compare_func_t compare_func, //TODO - Р РЋР Т‘Р ВµР В»Р В°РЎвЂљРЎРЉ Р Р…Р С•РЎР‚Р С Р С•Р В±РЎР‚Р В°Р В±Р С•РЎвЂљР С”РЎС“ Р С•РЎв‚¬Р С‘Р В±Р С•Р С”
+// Works on closed intervals [left_border, right_border].
+static vector_error_t vector_qsort_impl(vector_t* vector, compare_func_t compare_func, // TODO: improve error handling.
                                  size_t left_border, size_t right_border) {
     HARD_ASSERT(vector       != NULL, "Vector is nullptr");
     HARD_ASSERT(compare_func != NULL, "Compare_func is nullptr");
@@ -596,7 +595,7 @@ vector_error_t vector_lsd_sort(vector_t* vector) {
 }
 
 // ----------------------------------------------------------------------------
-//                               Р вЂ™Р В»Р В°Р Т‘, Р С‘Р Т‘Р С‘ Р Р…Р В°РЎвЂћР С‘Р С– (Р В·Р В°РЎвЂЎР ВµР С РЎвЂљР В°Р С”Р С•Р Вµ Р В·Р В°Р Т‘Р В°Р Р†Р В°РЎвЂљРЎРЉ (Р С›Р Р…Р С• Р Р†Р С•Р С•Р В±РЎвЂ°Р Вµ Р С–Р Т‘Р Вµ-РЎвЂљР С• Р С‘РЎРѓР С—Р С•Р В»РЎРЉР В·РЎС“Р ВµРЎвЂљРЎРѓРЎРЏ? Р Р‡ Р В¶Р Вµ Р Р…Р Вµ Р В·РЎР‚РЎРЏ Р ВµР С–Р С• Р Р…Р С•РЎР‚Р СР В°Р В»РЎРЉР Р…Р С• Р С—Р С‘РЎРѓР В°Р В»??))
+// Fast deterministic quicksort variant.
 // ----------------------------------------------------------------------------
 
 static vector_error_t vector_insertion_sort_range_fq(vector_t* vector, compare_func_t compare_func,

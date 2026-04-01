@@ -1,5 +1,5 @@
-#ifndef LAB3_COMMON_INCLUDE_VECTOR_H_NCLUDED
-#define LAB3_COMMON_INCLUDE_VECTOR_H_NCLUDED
+#ifndef LAB3_COMMON_INCLUDE_VECTOR_H_INCLUDED
+#define LAB3_COMMON_INCLUDE_VECTOR_H_INCLUDED
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -29,17 +29,17 @@ struct vector_t {
 typedef struct vector_t vector_t;
 typedef int (*compare_func_t)(void*, void*);
 
-vector_error_t vector_init       (vector_t* vector, size_t capacity, size_t elem_size);
+vector_error_t vector_init(vector_t* vector, size_t capacity, size_t elem_size);
 vector_error_t vector_static_init(vector_t* vector, void* data, size_t capacity, size_t elem_size);
-vector_error_t vector_destroy    (vector_t* vector);
+vector_error_t vector_destroy(vector_t* vector);
 
-size_t vector_size    (const vector_t* vector);
+size_t vector_size(const vector_t* vector);
 size_t vector_capacity(const vector_t* vector);
 
-      void* vector_get      (const vector_t* vector, size_t index);
+void* vector_get(const vector_t* vector, size_t index);
 const void* vector_get_const(const vector_t* vector, size_t index);
-      void* vector_put      (const vector_t* vector, size_t index, void* value);
-      void vector_clear     (vector_t*       vector);
+void* vector_put(const vector_t* vector, size_t index, void* value);
+void vector_clear(vector_t* vector);
 
 vector_error_t vector_push_back(vector_t* vector, const void* elem);
 vector_error_t vector_pop_back (vector_t* vector, void* elem_out);
@@ -68,4 +68,4 @@ size_t vector_required_bytes(size_t capacity, size_t elem_size);
 #define SIMPLE_VECTOR_STATIC_INIT(vector_, data_, capacity_, elem_type_) \
     vector_static_init((vector_), (data_), (capacity_), sizeof(elem_type_))
 
-#endif /* LAB3_COMMON_INCLUDE_VECTOR_H_NCLUDED */
+#endif /* LAB3_COMMON_INCLUDE_VECTOR_H_INCLUDED */
