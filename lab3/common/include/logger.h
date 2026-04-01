@@ -1,5 +1,5 @@
-#ifndef LAB2_COMMON_INCLUDE_LOGGER_H_INCLUDED
-#define LAB2_COMMON_INCLUDE_LOGGER_H_INCLUDED
+#ifndef LAB3_COMMON_INCLUDE_LOGGER_H_NCLUDED
+#define LAB3_COMMON_INCLUDE_LOGGER_H_NCLUDED
 
 #include <stdio.h>
 
@@ -16,7 +16,7 @@ typedef enum logger_output_type {
 } logger_output_type;
 
 void logger_initialize_stream(FILE *stream);
-int logger_initialize_file(const char *path);
+int  logger_initialize_file(const char *path);
 void logger_close(void);
 
 void logger_log_message(logger_mode_type mode, const char *file, int line, const char *format, ...);
@@ -33,4 +33,4 @@ void logger_log_message(logger_mode_type mode, const char *file, int line, const
 
 #define LOGGER_ERROR(...) logger_log_message(LOGGER_MODE_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
-#endif /* LAB2_COMMON_INCLUDE_LOGGER_H_INCLUDED */
+#endif /* LAB3_COMMON_INCLUDE_LOGGER_H_NCLUDED */
