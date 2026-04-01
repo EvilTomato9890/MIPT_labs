@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "asserts.h"
+#include "return_macros.h"
 
 struct binomial_heap_node {
     int key;
@@ -17,18 +18,13 @@ struct binomial_heap_node {
 
 static heap_status_t translate_vector_status(vector_error_t status) {
     switch (status) {
-        case VEC_ERR_OK:
-            return HEAP_STATUS_OK;
-        case VEC_ERR_MEM_ALLOC:
-            return HEAP_STATUS_ALLOC_FAIL;
+        case VEC_ERR_OK:        return HEAP_STATUS_OK;
+        case VEC_ERR_MEM_ALLOC: return HEAP_STATUS_ALLOC_FAIL;
         case VEC_ERR_BAD_ARG:
-        case VEC_ERR_FULL:
-            return HEAP_STATUS_INVALID_ARG;
-        case VEC_ERR_NOT_FOUND:
-            return HEAP_STATUS_EMPTY;
+        case VEC_ERR_FULL:      return HEAP_STATUS_INVALID_ARG;
+        case VEC_ERR_NOT_FOUND: return HEAP_STATUS_EMPTY;
         case VEC_ERR_INTERNAL:
-        default:
-            return HEAP_STATUS_INTERNAL;
+        default:                return HEAP_STATUS_INTERNAL;
     }
 }
 
@@ -53,9 +49,9 @@ static heap_status_t reserve_root_slots(binomial_heap_t *heap, size_t required_s
     while (heap->roots.size < required_slots) {
         binomial_heap_node_t *empty_root = NULL;
         heap_status_t status = translate_vector_status(vector_push_back(&heap->roots, &empty_root));
-        if (status != HEAP_STATUS_OK) {
-            return status;
-        }
+        RETURN_IF_ERROR(status != HEAP_STATUS_OK,
+                        status,
+                        "binomial_heap: failed to reserve root slot with status=%d", (int)status);
     }
     return HEAP_STATUS_OK;
 }
@@ -82,9 +78,9 @@ static binomial_heap_node_t *link_trees(binomial_heap_node_t *lhs, binomial_heap
         rhs = temp;
     }
 
-    rhs->parent = lhs;
+    rhs->parent  = lhs;
     rhs->sibling = lhs->child;
-    lhs->child = rhs;
+    lhs->child   = rhs;
     lhs->degree++;
     return lhs;
 }
@@ -122,15 +118,9 @@ static bool validate_tree(const binomial_heap_node_t *node, size_t *node_count) 
     size_t total = 1U;
 
     for (const binomial_heap_node_t *child = node->child; child != NULL; child = child->sibling) {
-        if (child->parent != node) {
-            return false;
-        }
-        if (child->key < node->key) {
-            return false;
-        }
-        if (child->degree >= node->degree) {
-            return false;
-        }
+        if (child->parent != node)         return false;
+        if (child->key    <  node->key)    return false;
+        if (child->degree >= node->degree) return false;
 
         size_t subtree_count = 0U;
         if (!validate_tree(child, &subtree_count)) {
@@ -141,34 +131,28 @@ static bool validate_tree(const binomial_heap_node_t *node, size_t *node_count) 
         children++;
     }
 
-    if (children != node->degree) {
-        return false;
-    }
+    if (children != node->degree) return false;
 
     *node_count = total;
     return true;
 }
 
 heap_status_t binomial_heap_init(binomial_heap_t *heap) {
-    if (heap == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return HEAP_STATUS_NULL_ARG);
 
     binomial_heap_destroy(heap);
 
     heap_status_t status = translate_vector_status(vector_init(&heap->roots, 1U, sizeof(binomial_heap_node_t *)));
-    if (status != HEAP_STATUS_OK) {
-        return status;
-    }
+    RETURN_IF_ERROR(status != HEAP_STATUS_OK,
+                    status,
+                    "binomial_heap: init failed with status=%d", (int)status);
 
     heap->size = 0U;
     return HEAP_STATUS_OK;
 }
 
 void binomial_heap_destroy(binomial_heap_t *heap) {
-    if (heap == NULL) {
-        return;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return);
 
     for (size_t degree = 0U; degree < heap->roots.size; ++degree) {
         binomial_heap_node_t **slot = (binomial_heap_node_t **)vector_get(&heap->roots, degree);
@@ -183,68 +167,65 @@ void binomial_heap_destroy(binomial_heap_t *heap) {
 }
 
 heap_status_t binomial_heap_insert(binomial_heap_t *heap, int value) {
-    if (heap == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return HEAP_STATUS_NULL_ARG);
 
     heap_status_t status = reserve_root_slots(heap, required_root_slots(heap->size + 1U));
-    if (status != HEAP_STATUS_OK) {
-        return status;
-    }
+    RETURN_IF_ERROR(status != HEAP_STATUS_OK,
+                    status,
+                    "binomial_heap: reserve_root_slots failed with status=%d", (int)status);
 
     binomial_heap_node_t *node = (binomial_heap_node_t *)calloc(1U, sizeof(*node));
-    if (node == NULL) {
-        return HEAP_STATUS_ALLOC_FAIL;
-    }
+    RETURN_IF_ERROR(node == NULL,
+                    HEAP_STATUS_ALLOC_FAIL,
+                    "binomial_heap: cannot allocate node");
 
     node->key = value;
     status = absorb_tree(heap, node);
-    if (status != HEAP_STATUS_OK) {
-        free(node);
-        return status;
-    }
+    RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                            status,
+                            free(node),
+                            "binomial_heap: absorb_tree failed with status=%d", (int)status);
 
     heap->size++;
     return HEAP_STATUS_OK;
 }
 
 heap_status_t binomial_heap_build_inserts(binomial_heap_t *heap, const int *values, size_t count) {
-    if (heap == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if (values == NULL && count != 0U) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return HEAP_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL(values != NULL || count == 0U,
+                           "values must not be NULL when count > 0",
+                           return HEAP_STATUS_NULL_ARG);
 
     heap_status_t status = binomial_heap_init(heap);
-    if (status != HEAP_STATUS_OK) {
-        return status;
-    }
+    RETURN_IF_ERROR(status != HEAP_STATUS_OK,
+                    status,
+                    "binomial_heap: init before build failed with status=%d", (int)status);
 
     status = reserve_root_slots(heap, required_root_slots(count));
-    if (status != HEAP_STATUS_OK) {
-        binomial_heap_destroy(heap);
-        return status;
-    }
+    RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                            status,
+                            binomial_heap_destroy(heap),
+                            "binomial_heap: reserve_root_slots during build failed with status=%d", (int)status);
 
     for (size_t index = 0U; index < count; ++index) {
         status = binomial_heap_insert(heap, values[index]);
-        if (status != HEAP_STATUS_OK) {
-            binomial_heap_destroy(heap);
-            return status;
-        }
+        RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                                status,
+                                binomial_heap_destroy(heap),
+                                "binomial_heap: insert failed at index=%zu with status=%d",
+                                index, (int)status);
     }
 
     return HEAP_STATUS_OK;
 }
 
 heap_status_t binomial_heap_extract_min(binomial_heap_t *heap, int *out_value) {
-    if (heap == NULL || out_value == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if (heap->size == 0U) {
-        return HEAP_STATUS_EMPTY;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL && out_value != NULL,
+                           "heap and out_value must not be NULL",
+                           return HEAP_STATUS_NULL_ARG);
+    RETURN_IF_ERROR(heap->size == 0U,
+                    HEAP_STATUS_EMPTY,
+                    "binomial_heap: extract_min called on empty heap");
 
     size_t best_degree = 0U;
     binomial_heap_node_t *best_root = NULL;
@@ -260,9 +241,9 @@ heap_status_t binomial_heap_extract_min(binomial_heap_t *heap, int *out_value) {
         }
     }
 
-    if (best_root == NULL) {
-        return HEAP_STATUS_INTERNAL;
-    }
+    RETURN_IF_ERROR(best_root == NULL,
+                    HEAP_STATUS_INTERNAL,
+                    "binomial_heap: no root found in non-empty heap");
 
     *root_slot(heap, best_degree) = NULL;
     *out_value = best_root->key;
@@ -271,15 +252,15 @@ heap_status_t binomial_heap_extract_min(binomial_heap_t *heap, int *out_value) {
     binomial_heap_node_t *child = best_root->child;
     while (child != NULL) {
         binomial_heap_node_t *next = child->sibling;
-        child->parent = NULL;
+        child->parent  = NULL;
         child->sibling = NULL;
 
         heap_status_t status = absorb_tree(heap, child);
-        if (status != HEAP_STATUS_OK) {
-            destroy_tree(next);
-            free(best_root);
-            return status;
-        }
+        RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                                status,
+                                destroy_tree(next); free(best_root),
+                                "binomial_heap: absorb_tree while extracting min failed with status=%d",
+                                (int)status);
 
         child = next;
     }
@@ -289,19 +270,13 @@ heap_status_t binomial_heap_extract_min(binomial_heap_t *heap, int *out_value) {
 }
 
 bool binomial_heap_is_valid(const binomial_heap_t *heap) {
-    if (heap == NULL) {
-        return false;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return false);
 
     size_t total_nodes = 0U;
     for (size_t degree = 0U; degree < heap->roots.size; ++degree) {
         const binomial_heap_node_t *const *slot = root_slot_const(heap, degree);
-        if (slot == NULL || *slot == NULL) {
-            continue;
-        }
-        if ((*slot)->degree != degree) {
-            return false;
-        }
+        if (slot == NULL || *slot == NULL) continue;
+        if ((*slot)->degree != degree) return false;
 
         size_t subtree_nodes = 0U;
         if (!validate_tree(*slot, &subtree_nodes)) {
@@ -314,12 +289,12 @@ bool binomial_heap_is_valid(const binomial_heap_t *heap) {
 }
 
 heap_status_t binomial_heap_benchmark_inserts(int *work_arr, size_t n, double *build_seconds, int *sorted_out) {
-    if (build_seconds == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if ((work_arr == NULL || sorted_out == NULL) && n != 0U) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(build_seconds != NULL,
+                           "build_seconds must not be NULL",
+                           return HEAP_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL((work_arr != NULL && sorted_out != NULL) || n == 0U,
+                           "work_arr and sorted_out must not be NULL when n > 0",
+                           return HEAP_STATUS_NULL_ARG);
 
     binomial_heap_t heap = {0};
 
@@ -328,21 +303,22 @@ heap_status_t binomial_heap_benchmark_inserts(int *work_arr, size_t n, double *b
     double end = monotonic_seconds();
     *build_seconds = end - start;
 
-    if (status != HEAP_STATUS_OK) {
-        binomial_heap_destroy(&heap);
-        return status;
-    }
-    if (!binomial_heap_is_valid(&heap)) {
-        binomial_heap_destroy(&heap);
-        return HEAP_STATUS_INTERNAL;
-    }
+    RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                            status,
+                            binomial_heap_destroy(&heap),
+                            "binomial_heap: build failed with status=%d", (int)status);
+    RETURN_IF_ERROR_CLEANUP(!binomial_heap_is_valid(&heap),
+                            HEAP_STATUS_INTERNAL,
+                            binomial_heap_destroy(&heap),
+                            "binomial_heap: heap invariant check failed after build");
 
     for (size_t index = 0U; index < n; ++index) {
         status = binomial_heap_extract_min(&heap, &sorted_out[index]);
-        if (status != HEAP_STATUS_OK) {
-            binomial_heap_destroy(&heap);
-            return status;
-        }
+        RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                                status,
+                                binomial_heap_destroy(&heap),
+                                "binomial_heap: extract_min failed at index=%zu with status=%d",
+                                index, (int)status);
     }
 
     binomial_heap_destroy(&heap);

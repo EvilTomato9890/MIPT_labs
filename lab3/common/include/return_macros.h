@@ -1,5 +1,5 @@
-#ifndef LAB2_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED
-#define LAB2_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED
+#ifndef LAB3_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED
+#define LAB3_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED
 
 #include "logger.h"
 
@@ -20,4 +20,4 @@
         }                                                   \
     } while (0)
 
-#endif /* LAB2_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED */
+#endif /* LAB3_COMMON_INCLUDE_RETURN_MACROS_H_NCLUDED */

@@ -5,6 +5,7 @@
 
 #include "asserts.h"
 #include "colors.h"
+#include "return_macros.h"
 
 static FILE *output_stream = NULL;
 static logger_output_type output_type = LOGGER_OUTPUT_EXTERNAL_STREAM;
@@ -75,9 +76,7 @@ int logger_initialize_file(const char *path) {
     SOFT_ASSERT_FUNCTIONAL(path != NULL, "File path must not be NULL", return 1);
 
     FILE *file = fopen(path, "a");
-    if (file == NULL) {
-        return 1;
-    }
+    RETURN_IF_ERROR(file == NULL, 1, "logger: failed to open file '%s'", path);
 
     if (output_type == LOGGER_OUTPUT_OWNED_FILE && output_stream != NULL) {
         fclose(output_stream);

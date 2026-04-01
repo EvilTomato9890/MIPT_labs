@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "asserts.h"
+#include "return_macros.h"
 
 typedef heap_status_t (*binary_build_fn)(binary_heap_t *heap, int *buffer, size_t count);
 
@@ -11,9 +12,9 @@ static void binary_heap_attach_buffer(binary_heap_t *heap, int *buffer, size_t s
     HARD_ASSERT(heap != NULL, "heap is NULL");
     HARD_ASSERT(buffer != NULL || capacity == 0U, "buffer is NULL");
 
-    heap->storage.data = buffer;
-    heap->storage.size = size;
-    heap->storage.capacity = capacity;
+    heap->storage.data      = buffer;
+    heap->storage.size      = size;
+    heap->storage.capacity  = capacity;
     heap->storage.elem_size = sizeof(int);
     heap->storage.is_static = true;
 }
@@ -52,9 +53,7 @@ static void binary_heap_sift_down(int *data, size_t count, size_t index) {
 
     while (true) {
         size_t left = index * 2U + 1U;
-        if (left >= count) {
-            return;
-        }
+        if (left >= count) return;
 
         size_t right = left + 1U;
         size_t smallest = left;
@@ -62,9 +61,7 @@ static void binary_heap_sift_down(int *data, size_t count, size_t index) {
             smallest = right;
         }
 
-        if (data[index] <= data[smallest]) {
-            return;
-        }
+        if (data[index] <= data[smallest]) return;
 
         swap_int(&data[index], &data[smallest]);
         index = smallest;
@@ -79,12 +76,12 @@ static double monotonic_seconds(void) {
 
 static heap_status_t binary_heap_benchmark_impl(int *work_arr, size_t n, double *build_seconds,
                                                 int *sorted_out, binary_build_fn build_fn) {
-    if (build_seconds == NULL || build_fn == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if ((work_arr == NULL || sorted_out == NULL) && n != 0U) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(build_seconds != NULL && build_fn != NULL,
+                           "build_seconds and build_fn must not be NULL",
+                           return HEAP_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL((work_arr != NULL && sorted_out != NULL) || n == 0U,
+                           "work_arr and sorted_out must not be NULL when n > 0",
+                           return HEAP_STATUS_NULL_ARG);
 
     binary_heap_t heap = {0};
 
@@ -93,21 +90,22 @@ static heap_status_t binary_heap_benchmark_impl(int *work_arr, size_t n, double 
     double end = monotonic_seconds();
     *build_seconds = end - start;
 
-    if (status != HEAP_STATUS_OK) {
-        binary_heap_reset(&heap);
-        return status;
-    }
-    if (!binary_heap_is_valid(&heap)) {
-        binary_heap_reset(&heap);
-        return HEAP_STATUS_INTERNAL;
-    }
+    RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                            status,
+                            binary_heap_reset(&heap),
+                            "binary_heap: build function failed with status=%d", (int)status);
+    RETURN_IF_ERROR_CLEANUP(!binary_heap_is_valid(&heap),
+                            HEAP_STATUS_INTERNAL,
+                            binary_heap_reset(&heap),
+                            "binary_heap: heap invariant check failed after build");
 
     for (size_t i = 0U; i < n; ++i) {
         status = binary_heap_extract_min(&heap, &sorted_out[i]);
-        if (status != HEAP_STATUS_OK) {
-            binary_heap_reset(&heap);
-            return status;
-        }
+        RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
+                                status,
+                                binary_heap_reset(&heap),
+                                "binary_heap: extract_min failed at index=%zu with status=%d",
+                                i, (int)status);
     }
 
     binary_heap_reset(&heap);
@@ -115,26 +113,20 @@ static heap_status_t binary_heap_benchmark_impl(int *work_arr, size_t n, double 
 }
 
 void binary_heap_reset(binary_heap_t *heap) {
-    if (heap == NULL) {
-        return;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return);
     (void)vector_destroy(&heap->storage);
 }
 
 heap_status_t binary_heap_build_linear(binary_heap_t *heap, int *buffer, size_t count) {
-    if (heap == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if (buffer == NULL && count != 0U) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return HEAP_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL(buffer != NULL || count == 0U,
+                           "buffer must not be NULL when count > 0",
+                           return HEAP_STATUS_NULL_ARG);
 
     binary_heap_reset(heap);
     binary_heap_attach_buffer(heap, buffer, count, count);
 
-    if (count < 2U) {
-        return HEAP_STATUS_OK;
-    }
+    if (count < 2U) return HEAP_STATUS_OK;
 
     for (size_t index = count / 2U; index > 0U; --index) {
         binary_heap_sift_down(binary_heap_data(heap), count, index - 1U);
@@ -143,12 +135,10 @@ heap_status_t binary_heap_build_linear(binary_heap_t *heap, int *buffer, size_t 
 }
 
 heap_status_t binary_heap_build_inserts(binary_heap_t *heap, int *buffer, size_t count) {
-    if (heap == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if (buffer == NULL && count != 0U) {
-        return HEAP_STATUS_NULL_ARG;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return HEAP_STATUS_NULL_ARG);
+    SOFT_ASSERT_FUNCTIONAL(buffer != NULL || count == 0U,
+                           "buffer must not be NULL when count > 0",
+                           return HEAP_STATUS_NULL_ARG);
 
     binary_heap_reset(heap);
     binary_heap_attach_buffer(heap, buffer, 0U, count);
@@ -161,12 +151,12 @@ heap_status_t binary_heap_build_inserts(binary_heap_t *heap, int *buffer, size_t
 }
 
 heap_status_t binary_heap_extract_min(binary_heap_t *heap, int *out_value) {
-    if (heap == NULL || out_value == NULL) {
-        return HEAP_STATUS_NULL_ARG;
-    }
-    if (heap->storage.size == 0U) {
-        return HEAP_STATUS_EMPTY;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL && out_value != NULL,
+                           "heap and out_value must not be NULL",
+                           return HEAP_STATUS_NULL_ARG);
+    RETURN_IF_ERROR(heap->storage.size == 0U,
+                    HEAP_STATUS_EMPTY,
+                    "binary_heap: extract_min called on empty heap");
 
     int *data = binary_heap_data(heap);
     *out_value = data[0];
@@ -183,9 +173,7 @@ heap_status_t binary_heap_extract_min(binary_heap_t *heap, int *out_value) {
 }
 
 bool binary_heap_is_valid(const binary_heap_t *heap) {
-    if (heap == NULL) {
-        return false;
-    }
+    SOFT_ASSERT_FUNCTIONAL(heap != NULL, "heap must not be NULL", return false);
 
     const int *data = binary_heap_data_const(heap);
     for (size_t index = 0U; index < heap->storage.size; ++index) {
