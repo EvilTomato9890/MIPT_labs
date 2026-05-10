@@ -1,0 +1,8 @@
+bin/
+results/
+plots/
+REPORT.md
+*.exe
+*.o
+__pycache__/
+*.pyc
