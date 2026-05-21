@@ -1,0 +1,15 @@
+benchmark_app
+benchmark_app.exe
+api_tests
+api_tests.exe
+*.o
+
+# Generated test outputs
+tests/generated_tests/
+tests/results/
+tests/plots/
+
+# Python cache
+__pycache__/
+*.pyc
+scripts/__pycache__/

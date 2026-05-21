@@ -1,0 +1,2 @@
+push_count=1000000
+rule=pop(size/2),push(size/4),until size<100000
