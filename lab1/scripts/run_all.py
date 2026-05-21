@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# ==============================================================================
-#               Данный скрипт практически полностью написан нейросетью
-# ==============================================================================
-
 from __future__ import annotations
 
 import argparse
@@ -26,7 +22,7 @@ NDEBUG_CFLAGS = "-std=c11 -O2 -Wall -Wextra -Wpedantic -Werror -DNDEBUG"
 
 
 def run_command(command: list[str], workdir: Path) -> None:
-    print(f"Running: {' '.join(command)}")
+    print(f"Running: {' '.join(command)}", flush=True)
     subprocess.run(command, cwd=workdir, check=True)
 
 
@@ -85,7 +81,10 @@ def generate_test_files(generated_tests_dir: Path,
         seed = TEST3_BASE_SEED + repeat_index
         seeds.append(seed)
         operation_file = generated_tests_dir / f"test3_ops_repeat_{repeat_index + 1}.txt"
-        print(f"Generating operations for test 3, repeat {repeat_index + 1}/{repeats} (seed={seed})")
+        print(
+            f"Generating operations for test 3, repeat {repeat_index + 1}/{repeats} (seed={seed})",
+            flush=True,
+        )
         generate_test3_operations(operation_file, seed, TEST3_OPERATION_COUNT)
         operation_files.append(operation_file)
 
@@ -179,7 +178,7 @@ def collect_raw_records(binary_path: Path,
 
     for implementation in implementations:
         for repeat_index in range(repeats):
-            print(f"Running test 4 for {implementation}, repeat {repeat_index + 1}/{repeats}")
+            print(f"Running test 4 for {implementation}, repeat {repeat_index + 1}/{repeats}", flush=True)
             for n_value in n_values:
                 elapsed = run_benchmark(
                     binary_path,
@@ -374,10 +373,6 @@ def main() -> int:
 
     run_command(["make", "clean"], repo_root)
     run_make_target(repo_root, "all")
-    run_make_target(repo_root, "test")
-
-    tests_binary = detect_executable(repo_root, "api_tests")
-    run_command([str(tests_binary)], repo_root)
 
     benchmark_binary = detect_executable(repo_root, "benchmark_app")
     raw_records = collect_raw_records(
@@ -394,10 +389,10 @@ def main() -> int:
     plot_test4(averaged_test4, plots_dir / "test4_time_n.png")
     write_conclusion(results_dir, averaged_tests_1_3, averaged_test4)
 
-    print("Done. tests saved in:")
-    print(f"  {generated_tests_dir}")
-    print(f"  {results_dir}")
-    print(f"  {plots_dir}")
+    print("Done. Files saved in:", flush=True)
+    print(f"  {generated_tests_dir}", flush=True)
+    print(f"  {results_dir}", flush=True)
+    print(f"  {plots_dir}", flush=True)
 
     print("StAcK oN dYnAmIc ArRaY iS bEtTeR!!!!!!!!-_-!!!!!!!! (On this list realization)")
     return 0

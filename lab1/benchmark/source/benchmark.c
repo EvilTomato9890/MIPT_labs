@@ -12,6 +12,8 @@ enum {
     BENCHMARK_INITIAL_CAPACITY = 1024,
     TEST_BASE_SIZE             = 1000000,
     TEST_STOP_SIZE             = 100000,
+    TEST1_SIZE_DECREASE_FACTOR = 2,
+    TEST1_SIZE_INCREASE_FACTOR = 4,
     TEST2_BLOCK_ITERATIONS     = 100,
     TEST2_BLOCK_SIZE           = 10000,
     TEST3_OPERATIONS_REQUIRED  = 1000000
@@ -133,20 +135,6 @@ static benchmark_status_t stack_context_pop_strict(struct stack_context *context
     BM_RETURN(BENCHMARK_STATUS_INVALID_ARG);
 }
 
-static void stack_context_pop_soft(struct stack_context *context) {
-    if (context == NULL || context->stack_object == NULL) {
-        SOFT_ASSERT_FUNCTIONAL(context != NULL && context->stack_object != NULL,
-                               "Pop context must be initialized", LOGGER_ERROR("Invalid soft-pop context"));
-        return;
-    }
-
-    if (context->implementation == BENCHMARK_IMPL_ARRAY) {
-        (void)stack_array_pop((stack_array *)context->stack_object);
-    } else if (context->implementation == BENCHMARK_IMPL_LIST) {
-        (void)stack_list_pop((stack_list *)context->stack_object);
-    }
-}
-
 static benchmark_status_t push_many(struct stack_context *context, size_t count, int *next_value) {
     SOFT_ASSERT_FUNCTIONAL(context != NULL && next_value != NULL, "Push_many arguments must not be NULL",
                            BM_RETURN(BENCHMARK_STATUS_NULL_ARG));
@@ -183,8 +171,8 @@ static benchmark_status_t run_test1_half_pop_quarter_push(struct stack_context *
 
     while (*current_size >= TEST_STOP_SIZE) {
         size_t previous_size = *current_size;
-        size_t pop_count = previous_size / 2U;
-        size_t push_count = previous_size / 4U;
+        size_t pop_count = previous_size / TEST1_SIZE_DECREASE_FACTOR;
+        size_t push_count = previous_size / TEST1_SIZE_INCREASE_FACTOR;
 
         benchmark_status_t pop_status = pop_many_strict(context, pop_count);
         if (pop_status != BENCHMARK_STATUS_OK) {
@@ -305,7 +293,10 @@ static benchmark_status_t run_test_3(struct stack_context *context,
             }
             next_value += 1;
         } else if (operation == 2U) {
-            stack_context_pop_soft(context);
+            benchmark_status_t pop_status = stack_context_pop_strict(context);
+            if (pop_status != BENCHMARK_STATUS_OK) {
+                BM_RETURN(pop_status);
+            }
         } else {
             BM_RETURN(BENCHMARK_STATUS_INVALID_ARG);
         }

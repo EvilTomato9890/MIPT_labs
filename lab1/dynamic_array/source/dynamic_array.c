@@ -7,6 +7,13 @@
 #include "asserts.h"
 #include "logger.h"
 
+enum {
+    DYNAMIC_ARRAY_DEFAULT_CAPACITY        = 1U,
+    DYNAMIC_ARRAY_GROWTH_FACTOR          = 2U,
+    DYNAMIC_ARRAY_SHRINK_FACTOR          = 2U,
+    DYNAMIC_ARRAY_SHRINK_THRESHOLD_FACTOR = 4U
+};
+
 #define DA_RETURN(status_value)                                                           \
     do {                                                                                  \
         dynamic_array_status_t status_to_return = (status_value);                         \
@@ -64,7 +71,7 @@ dynamic_array_status_t dynamic_array_ctor(dynamic_array_t *array, size_t initial
         DA_RETURN(DYNAMIC_ARRAY_STATUS_INVALID_ARG);
     }
 
-    size_t normalized_capacity = (initial_capacity == 0U) ? 1U : initial_capacity;
+    size_t normalized_capacity = (initial_capacity == 0U) ? DYNAMIC_ARRAY_DEFAULT_CAPACITY : initial_capacity;
     size_t bytes_count = 0U;
     dynamic_array_status_t status = safe_multiply_size(normalized_capacity, element_size, &bytes_count);
     if (status != DYNAMIC_ARRAY_STATUS_OK) {
@@ -109,11 +116,12 @@ dynamic_array_status_t dynamic_array_push_back(dynamic_array_t *array, const voi
     }
 
     if (array->size == array->capacity) {
-        if (array->capacity > SIZE_MAX / 2U) {
+        if (array->capacity > SIZE_MAX / DYNAMIC_ARRAY_GROWTH_FACTOR) {
             DA_RETURN(DYNAMIC_ARRAY_STATUS_OVERFLOW);
         }
 
-        dynamic_array_status_t resize_status = dynamic_array_resize(array, array->capacity * 2U);
+        dynamic_array_status_t resize_status =
+            dynamic_array_resize(array, array->capacity * DYNAMIC_ARRAY_GROWTH_FACTOR);
         if (resize_status != DYNAMIC_ARRAY_STATUS_OK) {
             DA_RETURN(resize_status);
         }
@@ -151,8 +159,9 @@ dynamic_array_status_t dynamic_array_pop_back(dynamic_array_t *array) {
     size_t old_size = array->size;
     size_t new_size = old_size - 1U;
 
-    if (array->capacity > array->minimum_capacity && new_size <= array->capacity / 4U) {
-        size_t new_capacity = array->capacity / 2U;
+    if (array->capacity > array->minimum_capacity &&
+        new_size <= array->capacity / DYNAMIC_ARRAY_SHRINK_THRESHOLD_FACTOR) {
+        size_t new_capacity = array->capacity / DYNAMIC_ARRAY_SHRINK_FACTOR;
         if (new_capacity < array->minimum_capacity) {
             new_capacity = array->minimum_capacity;
         }

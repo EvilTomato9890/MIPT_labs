@@ -1,11 +1,12 @@
 CC := gcc
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror
 
-#TODO - lj,fdbnm dfhbfwb. lkz dbyls
 ifeq ($(OS),Windows_NT) 
 RM_CMD := cmd /c del /f /q
+RM_REDIRECT := 2>NUL
 else
 RM_CMD := rm -f
+RM_REDIRECT :=
 endif
 
 INCLUDES := \
@@ -49,6 +50,6 @@ $(TEST_TARGET): $(TEST_SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDES) $(TEST_SOURCES) -o $(TEST_TARGET)
 
 clean:
-	-$(RM_CMD) $(TARGET) $(TARGET).exe
-	-$(RM_CMD) $(TEST_TARGET) $(TEST_TARGET).exe
-	-$(RM_CMD) target target.exe
+	-$(RM_CMD) $(TARGET) $(TARGET).exe $(RM_REDIRECT)
+	-$(RM_CMD) $(TEST_TARGET) $(TEST_TARGET).exe $(RM_REDIRECT)
+	-$(RM_CMD) target target.exe $(RM_REDIRECT)

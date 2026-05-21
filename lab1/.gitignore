@@ -4,8 +4,10 @@ api_tests
 api_tests.exe
 *.o
 
-# Generated tests
-tests/
+# Generated test outputs
+tests/generated_tests/
+tests/results/
+tests/plots/
 
 # Python cache
 __pycache__/
