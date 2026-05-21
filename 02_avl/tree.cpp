@@ -243,7 +243,7 @@ int tree_erase(Tree* tree, int key) {
 
     RETURN_IF(tree == nullptr || tree->root == nullptr, 0);
 
-    path = (Node***) malloc((size_t) (tree->size + 2) * sizeof(Node**));
+    path = (Node***) calloc((size_t) (tree->size + 2), sizeof(Node**));
     RETURN_IF(path == nullptr, 0);
 
     link = &tree->root;

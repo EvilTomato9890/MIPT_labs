@@ -85,7 +85,7 @@ static int* lab_make_keys(int n, int sorted, uint64_t seed) {
 
     ASSERT(sorted == 0 || sorted == 1);
 
-    int* keys = (int*) malloc((size_t) n * sizeof(int));
+    int* keys = (int*) calloc((size_t) n, sizeof(int));
 
     if (keys == nullptr) {
         fprintf(stderr, "allocation failed for %d keys\n", n);

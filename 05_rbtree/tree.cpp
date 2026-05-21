@@ -247,7 +247,7 @@ static void destroy_nodes(Tree* tree) {
         return;
     }
 
-    stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+    stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
     if (stack == nullptr) {
         return;
     }

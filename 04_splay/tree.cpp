@@ -154,7 +154,7 @@ static void destroy_nodes(Tree* tree) {
         return;
     }
 
-    stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+    stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
     if (stack == nullptr) {
         return;
     }
@@ -297,7 +297,7 @@ int tree_validate(Tree* tree) {
         return 0;
     }
 
-    stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+    stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
     if (stack == nullptr) {
         return 0;
     }
@@ -343,7 +343,7 @@ int tree_export_keys(Tree* tree, int* out, int capacity) {
         return 0;
     }
 
-    stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+    stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
     if (stack == nullptr) {
         return 0;
     }

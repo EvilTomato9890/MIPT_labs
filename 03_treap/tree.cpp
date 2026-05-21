@@ -61,7 +61,7 @@ void tree_destroy(Tree* tree) {
     }
 
     if (tree->root != nullptr && tree->size > 0) {
-        stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+        stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
         if (stack != nullptr) {
             stack[top++] = tree->root;
             while (top > 0) {
@@ -95,7 +95,7 @@ int tree_insert(Tree* tree, int key) {
 
     RETURN_IF(tree == nullptr, 0);
 
-    path = (Node***) malloc((size_t) (tree->size + 2) * sizeof(Node**));
+    path = (Node***) calloc((size_t) (tree->size + 2), sizeof(Node**));
     RETURN_IF(path == nullptr, 0);
 
     link = &tree->root;
@@ -224,7 +224,7 @@ int tree_validate(Tree* tree) {
         return tree->size == 0;
     }
 
-    stack = (Frame*) malloc((size_t) tree->size * sizeof(Frame));
+    stack = (Frame*) calloc((size_t) tree->size, sizeof(Frame));
     if (stack == nullptr) {
         return 0;
     }
@@ -270,7 +270,7 @@ int tree_export_keys(Tree* tree, int* out, int capacity) {
         return 0;
     }
 
-    stack = (Node**) malloc((size_t) tree->size * sizeof(Node*));
+    stack = (Node**) calloc((size_t) tree->size, sizeof(Node*));
     if (stack == nullptr) {
         return 0;
     }
