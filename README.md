@@ -13,6 +13,13 @@
 
 ## Запуск
 
+Для macOS нужны Command Line Tools и Python-зависимости:
+
+```sh
+xcode-select --install
+python3 -m pip install pandas matplotlib
+```
+
 ```sh
 make test
 make bench
@@ -27,6 +34,12 @@ make all
 ```
 
 Быстрая проверка пайплайна без полного миллиона элементов:
+
+```sh
+LAB_FAST=1 make all
+```
+
+В PowerShell:
 
 ```powershell
 $env:LAB_FAST='1'; make all
