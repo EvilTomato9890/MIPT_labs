@@ -1,3 +1,8 @@
+/**
+ * @file test_api.c
+ * @brief Additional API smoke tests for containers and stack implementations.
+ */
+
 #include <stdio.h>
 
 #include "dynamic_array.h"
@@ -5,6 +10,9 @@
 #include "stack_array.h"
 #include "stack_list.h"
 
+/**
+ * @brief Fails the current test if a condition is false.
+ */
 #define EXPECT_TRUE(condition)                                                             \
     do {                                                                                   \
         if (!(condition)) {                                                                 \
@@ -13,6 +21,9 @@
         }                                                                                  \
     } while (0)
 
+/**
+ * @brief Fails the current test if two status values differ.
+ */
 #define EXPECT_STATUS(actual, expected)                                                     \
     do {                                                                                   \
         int actual_value = (int)(actual);                                                   \
@@ -24,6 +35,9 @@
         }                                                                                  \
     } while (0)
 
+/**
+ * @brief Fails the current test if two size values differ.
+ */
 #define EXPECT_SIZE(actual, expected)                                                       \
     do {                                                                                   \
         size_t actual_value = (actual);                                                     \

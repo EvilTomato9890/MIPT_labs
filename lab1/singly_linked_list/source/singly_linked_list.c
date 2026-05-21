@@ -1,3 +1,8 @@
+/**
+ * @file singly_linked_list.c
+ * @brief Implementation of the generic singly linked list.
+ */
+
 #include "singly_linked_list.h"
 
 #include <stdint.h>
@@ -16,8 +21,13 @@
         return status_to_return;                                                           \
     } while (0)
 
+/**
+ * @brief Internal node of the singly linked list.
+ */
 struct singly_linked_list_node {
+    /** Next node in the list. */
     singly_linked_list_node_t *next;
+    /** Flexible array member with copied element bytes. */
     unsigned char payload[];
 };
 

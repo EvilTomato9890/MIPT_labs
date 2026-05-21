@@ -1,3 +1,8 @@
+/**
+ * @file main.c
+ * @brief Command-line entry point for running one benchmark scenario.
+ */
+
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -10,12 +15,21 @@
 #include "benchmark.h"
 #include "logger.h"
 
+/**
+ * @brief Status codes returned by command-line parsing and file loading helpers.
+ */
 typedef enum cli_status {
+    /** Operation completed successfully. */
     CLI_STATUS_OK = 0,
+    /** A required pointer argument was NULL. */
     CLI_STATUS_NULL_ARG,
+    /** An argument value is invalid. */
     CLI_STATUS_INVALID_ARG,
+    /** Numeric conversion overflowed. */
     CLI_STATUS_OVERFLOW,
+    /** Memory allocation failed. */
     CLI_STATUS_ALLOC_FAIL,
+    /** Input/output operation failed. */
     CLI_STATUS_IO_FAIL
 } cli_status_t;
 
@@ -28,10 +42,17 @@ typedef enum cli_status {
         return status_to_return;                                                          \
     } while (0)
 
+/**
+ * @brief Parsed command-line options.
+ */
 struct cli_options {
+    /** Textual implementation name. */
     const char *implementation_text;
+    /** Benchmark test identifier from 1 to 4. */
     int test_id;
+    /** Number of pushes for test 4. */
     size_t test4_push_count;
+    /** Path to generated operation file for test 3. */
     const char *operations_file_path;
 };
 

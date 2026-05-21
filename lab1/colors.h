@@ -1,19 +1,34 @@
+/**
+ * @file colors.h
+ * @brief ANSI escape sequences for colored terminal output.
+ */
+
 #ifndef COLOR_H_INCLUDED
 #define COLOR_H_INCLUDED
 
-//! @brief Строка, придающая выводу красный цвет.
+/**
+ * @brief ANSI sequence for red text.
+ */
 #define RED "\033[31m"
 
-//! @brief Строка, придающая выводу синий цвет.   
+/**
+ * @brief ANSI sequence for blue text.
+ */
 #define BLUE "\033[34m"
 
-//! @brief Строка, придающая выводу голубой цвет.
+/**
+ * @brief ANSI sequence for cyan text.
+ */
 #define CYAN "\033[36m"
 
-//! @brief Строка, придающая выводу желтый цвет.   
+/**
+ * @brief ANSI sequence for yellow text.
+ */
 #define YELLOW "\033[33m"
 
-//! @brief Строка, очищающая цвет вывода.
+/**
+ * @brief ANSI sequence that resets terminal colors.
+ */
 #define RESET "\033[0m"
 
 #endif

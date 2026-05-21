@@ -1,3 +1,8 @@
+/**
+ * @file stack_array.c
+ * @brief Implementation of the stack backed by a dynamic array.
+ */
+
 #include "stack_array.h"
 
 #include <stdlib.h>

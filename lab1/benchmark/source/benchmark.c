@@ -1,3 +1,8 @@
+/**
+ * @file benchmark.c
+ * @brief Implementation of stack benchmark scenarios.
+ */
+
 #include "benchmark.h"
 
 #include <string.h>
@@ -9,13 +14,21 @@
 #include "stack_list.h"
 
 enum {
+    /** Initial capacity hint used for array-backed stacks in benchmarks. */
     BENCHMARK_INITIAL_CAPACITY = 1024,
+    /** Initial stack size for tests 1-3. */
     TEST_BASE_SIZE             = 1000000,
+    /** Stop threshold for the first test scenario. */
     TEST_STOP_SIZE             = 100000,
+    /** Divisor used to calculate how many elements are removed in test 1. */
     TEST1_SIZE_DECREASE_FACTOR = 2,
+    /** Divisor used to calculate how many elements are added back in test 1. */
     TEST1_SIZE_INCREASE_FACTOR = 4,
+    /** Number of pop/push stress blocks in test 2. */
     TEST2_BLOCK_ITERATIONS     = 100,
+    /** Number of operations inside one stress block in test 2. */
     TEST2_BLOCK_SIZE           = 10000,
+    /** Required number of generated operations for test 3. */
     TEST3_OPERATIONS_REQUIRED  = 1000000
 };
 
@@ -28,8 +41,13 @@ enum {
         return status_to_return;                                                         \
     } while (0)
 
+/**
+ * @brief Type-erased stack wrapper used by benchmark scenarios.
+ */
 struct stack_context {
+    /** Selected stack implementation. */
     enum benchmark_impl_type implementation;
+    /** Pointer to stack_array or stack_list. */
     void *stack_object;
 };
 

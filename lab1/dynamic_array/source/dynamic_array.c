@@ -1,3 +1,8 @@
+/**
+ * @file dynamic_array.c
+ * @brief Implementation of the generic dynamic array.
+ */
+
 #include "dynamic_array.h"
 
 #include <stdint.h>
@@ -8,9 +13,13 @@
 #include "logger.h"
 
 enum {
+    /** Default capacity used when zero initial capacity is requested. */
     DYNAMIC_ARRAY_DEFAULT_CAPACITY        = 1U,
+    /** Factor used to increase capacity when the array is full. */
     DYNAMIC_ARRAY_GROWTH_FACTOR          = 2U,
+    /** Factor used to decrease capacity after removals. */
     DYNAMIC_ARRAY_SHRINK_FACTOR          = 2U,
+    /** Shrink is triggered when size drops below capacity divided by this value. */
     DYNAMIC_ARRAY_SHRINK_THRESHOLD_FACTOR = 4U
 };
 

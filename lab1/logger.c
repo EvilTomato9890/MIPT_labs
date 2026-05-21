@@ -1,3 +1,8 @@
+/**
+ * @file logger.c
+ * @brief Implementation of the minimal stderr logger.
+ */
+
 #include "logger.h"
 
 #include <stdarg.h>

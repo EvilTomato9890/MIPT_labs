@@ -1,3 +1,8 @@
+/**
+ * @file stack_list.c
+ * @brief Implementation of the stack backed by a singly linked list.
+ */
+
 #include "stack_list.h"
 
 #include <stdlib.h>
