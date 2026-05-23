@@ -3,6 +3,5 @@ bin/
 .review_tests/
 .review_results/
 artifacts/
-results/
 tests/
 python/__pycache__/
