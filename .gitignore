@@ -1,0 +1,5 @@
+.vscode/
+build/
+tests/
+lab3/build/
+lab3/tests/

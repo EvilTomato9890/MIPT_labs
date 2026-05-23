@@ -1,0 +1,16 @@
+algorithm,size,seconds
+binomial_heap_inserts,100000,0.006896184
+binomial_heap_inserts,200000,0.014845080
+binomial_heap_inserts,300000,0.019681515
+binomial_heap_inserts,400000,0.027617058
+binomial_heap_inserts,500000,0.040554717
+binomial_heap_inserts,600000,0.044756797
+binomial_heap_inserts,700000,0.046602673
+binomial_heap_inserts,800000,0.060448168
+binomial_heap_inserts,900000,0.068400906
+binomial_heap_inserts,1000000,0.072176135
+binomial_heap_inserts,1100000,0.076295672
+binomial_heap_inserts,1200000,0.085390276
+binomial_heap_inserts,1300000,0.101327229
+binomial_heap_inserts,1400000,0.111661222
+binomial_heap_inserts,1500000,0.125825444
