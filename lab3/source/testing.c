@@ -174,12 +174,6 @@ static testing_status_t convert_dijkstra_status(dijkstra_status_t status) {
     }
 }
 
-static double monotonic_seconds(void) {
-    struct timespec time_spec = {0};
-    clock_gettime(CLOCK_MONOTONIC, &time_spec);
-    return (double)time_spec.tv_sec + (double)time_spec.tv_nsec / 1000000000.0;
-}
-
 static unsigned mix_instance_seed(unsigned base_seed, size_t size, size_t copy_idx) {
     uint64_t value = ((uint64_t)base_seed << 32U) ^
                      ((uint64_t)size * 0x9E3779B97F4A7C15ULL) ^
@@ -528,9 +522,9 @@ static testing_status_t benchmark_dijkstra_group(const graph_benchmark_config_t 
             for (size_t runner_idx = 0U; runner_idx < count && result == TESTING_STATUS_OK; ++runner_idx) {
                 uint64_t *target = (runner_idx == 0U) ? reference : buffer;
 
-                double start = monotonic_seconds();
+                clock_t start = clock();
                 dijkstra_status = runners[runner_idx].fn(graph, 0U, target);
-                double end = monotonic_seconds();
+                clock_t end = clock();
 
                 if (dijkstra_status != DIJKSTRA_STATUS_OK) {
                     LOGGER_ERROR("testing: runner '%s' failed for size=%zu copy=%zu with status=%d",
@@ -546,7 +540,8 @@ static testing_status_t benchmark_dijkstra_group(const graph_benchmark_config_t 
                     break;
                 }
 
-                averages[runner_idx * size_count + size_idx] += end - start;
+                averages[runner_idx * size_count + size_idx] +=
+                    (double)(end - start) / (double)CLOCKS_PER_SEC;
                 ++completed;
                 render_progress_bar(runners[runner_idx].name, completed, total_runs, size);
             }

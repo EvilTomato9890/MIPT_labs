@@ -28,12 +28,6 @@ static heap_status_t translate_vector_status(vector_error_t status) {
     }
 }
 
-static double monotonic_seconds(void) {
-    struct timespec time_spec = {0};
-    clock_gettime(CLOCK_MONOTONIC, &time_spec);
-    return (double)time_spec.tv_sec + (double)time_spec.tv_nsec / 1000000000.0;
-}
-
 static size_t required_root_slots(size_t size) {
     size_t slots = 1U;
     while (size > 0U) {
@@ -298,10 +292,10 @@ heap_status_t binomial_heap_benchmark_inserts(int *work_arr, size_t n, double *b
 
     binomial_heap_t heap = {0};
 
-    double start = monotonic_seconds();
+    clock_t start = clock();
     heap_status_t status = binomial_heap_build_inserts(&heap, work_arr, n);
-    double end = monotonic_seconds();
-    *build_seconds = end - start;
+    clock_t end = clock();
+    *build_seconds = (double)(end - start) / (double)CLOCKS_PER_SEC;
 
     RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
                             status,

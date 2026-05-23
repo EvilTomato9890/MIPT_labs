@@ -68,12 +68,6 @@ static void binary_heap_sift_down(int *data, size_t count, size_t index) {
     }
 }
 
-static double monotonic_seconds(void) {
-    struct timespec time_spec = {0};
-    clock_gettime(CLOCK_MONOTONIC, &time_spec);
-    return (double)time_spec.tv_sec + (double)time_spec.tv_nsec / 1000000000.0;
-}
-
 static heap_status_t binary_heap_benchmark_impl(int *work_arr, size_t n, double *build_seconds,
                                                 int *sorted_out, binary_build_fn build_fn) {
     SOFT_ASSERT_FUNCTIONAL(build_seconds != NULL && build_fn != NULL,
@@ -85,10 +79,10 @@ static heap_status_t binary_heap_benchmark_impl(int *work_arr, size_t n, double 
 
     binary_heap_t heap = {0};
 
-    double start = monotonic_seconds();
+    clock_t start = clock();
     heap_status_t status = build_fn(&heap, work_arr, n);
-    double end = monotonic_seconds();
-    *build_seconds = end - start;
+    clock_t end = clock();
+    *build_seconds = (double)(end - start) / (double)CLOCKS_PER_SEC;
 
     RETURN_IF_ERROR_CLEANUP(status != HEAP_STATUS_OK,
                             status,

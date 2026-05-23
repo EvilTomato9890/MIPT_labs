@@ -20,7 +20,8 @@ normalize_path() {
       wslpath -a "$path"
       return 0
     fi
-    local drive="${BASH_REMATCH[1],,}"
+    local drive="${BASH_REMATCH[1]}"
+    drive="$(printf '%s' "$drive" | tr '[:upper:]' '[:lower:]')"
     local rest="${BASH_REMATCH[2]}"
     printf '/%s%s\n' "$drive" "${rest:-}"
     return 0
